@@ -2,8 +2,9 @@ from app import create_app
 from models import db
 from models.user import User
 from models.game import Game, Achievement
+from models.shop import ShopItem, DailyChallenge, GameEvent
 from werkzeug.security import generate_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta
 
 def init_database():
     app = create_app()
@@ -73,9 +74,79 @@ def init_database():
                 ach = Achievement(**ad)
                 db.session.add(ach)
 
+        # Create shop items
+        shop_items_data = [
+            # 皮肤类
+            {'name': '金色蛇身', 'description': '贪吃蛇专属金色皮肤', 'icon': '🌟', 'item_type': 'skin', 'price': 100, 'game_id': 1, 'rarity': 'rare'},
+            {'name': '彩虹方块', 'description': '俄罗斯方块彩虹主题', 'icon': '🌈', 'item_type': 'skin', 'price': 150, 'game_id': 4, 'rarity': 'epic'},
+            {'name': '霓虹球', 'description': '打砖块霓虹球效果', 'icon': '✨', 'item_type': 'skin', 'price': 120, 'game_id': 6, 'rarity': 'rare'},
+            
+            # 主题类
+            {'name': '暗黑主题', 'description': '全局暗黑模式主题', 'icon': '🌙', 'item_type': 'theme', 'price': 200, 'game_id': None, 'rarity': 'epic'},
+            {'name': '复古主题', 'description': '经典复古像素风格', 'icon': '👾', 'item_type': 'theme', 'price': 180, 'game_id': None, 'rarity': 'rare'},
+            {'name': '樱花主题', 'description': '粉色樱花飘落效果', 'icon': '🌸', 'item_type': 'theme', 'price': 250, 'game_id': None, 'rarity': 'legendary'},
+            
+            # 特效类
+            {'name': '粒子爆炸', 'description': '消除时的粒子爆炸特效', 'icon': '💥', 'item_type': 'effect', 'price': 80, 'game_id': None, 'rarity': 'common'},
+            {'name': '星光闪烁', 'description': '得分时的星光闪烁效果', 'icon': '⭐', 'item_type': 'effect', 'price': 100, 'game_id': None, 'rarity': 'rare'},
+            
+            # 徽章类
+            {'name': '新手徽章', 'description': '显示在个人主页的新手徽章', 'icon': '🔰', 'item_type': 'badge', 'price': 50, 'game_id': None, 'rarity': 'common'},
+            {'name': '高手徽章', 'description': '显示在个人主页的高手徽章', 'icon': '🏆', 'item_type': 'badge', 'price': 300, 'game_id': None, 'rarity': 'legendary'},
+            {'name': '爱心徽章', 'description': '可爱的爱心徽章', 'icon': '❤️', 'item_type': 'badge', 'price': 150, 'game_id': None, 'rarity': 'rare'},
+            
+            # 增益类
+            {'name': '双倍金币卡', 'description': '30分钟内金币获取翻倍', 'icon': '💰', 'item_type': 'boost', 'price': 500, 'game_id': None, 'rarity': 'epic'},
+            {'name': '幸运加成', 'description': '增加10%分数加成', 'icon': '🍀', 'item_type': 'boost', 'price': 200, 'game_id': None, 'rarity': 'rare'},
+        ]
+        
+        for sid in shop_items_data:
+            item = ShopItem.query.filter_by(name=sid['name']).first()
+            if not item:
+                item = ShopItem(**sid)
+                db.session.add(item)
+        
+        # Create daily challenges
+        daily_challenges_data = [
+            {'name': '每日登录', 'description': '登录游戏平台', 'icon': '👋', 'challenge_type': 'play_count', 'target_value': 1, 'coin_reward': 10, 'difficulty': 'easy'},
+            {'name': '游戏玩家', 'description': '完成3局游戏', 'icon': '🎮', 'challenge_type': 'play_count', 'target_value': 3, 'coin_reward': 20, 'difficulty': 'normal'},
+            {'name': '游戏达人', 'description': '完成5局游戏', 'icon': '🎯', 'challenge_type': 'play_count', 'target_value': 5, 'coin_reward': 35, 'difficulty': 'normal'},
+            {'name': '高分挑战', 'description': '任意游戏得分超过100', 'icon': '💯', 'challenge_type': 'reach_score', 'target_value': 100, 'coin_reward': 25, 'difficulty': 'normal'},
+            {'name': '高分达人', 'description': '任意游戏得分超过500', 'icon': '🔥', 'challenge_type': 'reach_score', 'target_value': 500, 'coin_reward': 50, 'difficulty': 'hard'},
+            {'name': '总分积累', 'description': '累计总分达到1000', 'icon': '📊', 'challenge_type': 'total_score', 'target_value': 1000, 'coin_reward': 40, 'difficulty': 'normal'},
+        ]
+        
+        for dcd in daily_challenges_data:
+            challenge = DailyChallenge.query.filter_by(name=dcd['name']).first()
+            if not challenge:
+                challenge = DailyChallenge(**dcd)
+                db.session.add(challenge)
+        
+        # Create sample events
+        now = datetime.now()
+        events_data = [
+            {
+                'name': '周末双倍金币',
+                'description': '周末期间所有游戏金币奖励翻倍！',
+                'icon': '🎉',
+                'event_type': 'double_coins',
+                'start_time': now - timedelta(hours=1),
+                'end_time': now + timedelta(days=2),
+                'coin_bonus': 100,
+                'score_multiplier': 1.0
+            },
+        ]
+        
+        for ed in events_data:
+            event = GameEvent.query.filter_by(name=ed['name']).first()
+            if not event:
+                event = GameEvent(**ed)
+                db.session.add(event)
+
         db.session.commit()
         print('数据库初始化完成！')
         print('管理员账号: admin / admin123')
+        print('已添加商城商品、每日挑战和活动数据')
 
 if __name__ == '__main__':
     init_database()

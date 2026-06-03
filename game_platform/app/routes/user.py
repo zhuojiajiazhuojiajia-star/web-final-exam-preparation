@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from models.user import User
 from models.game import GameScore, GameFavorite, UserAchievement, Achievement
+from models.shop import UserCurrency, UserItem, ShopItem
 from models import db
 from werkzeug.utils import secure_filename
 import os
@@ -22,13 +23,33 @@ def profile():
     best_scores = db.session.query(
         GameScore.game_id, func.max(GameScore.score).label('best_score')
     ).filter_by(user_id=current_user.id).group_by(GameScore.game_id).all()
+    
+    # 获取用户金币信息
+    currency = UserCurrency.query.filter_by(user_id=current_user.id).first()
+    if not currency:
+        currency = UserCurrency(user_id=current_user.id, coins=100)
+        db.session.add(currency)
+        db.session.commit()
+    
+    # 获取用户拥有的物品
+    user_items = UserItem.query.filter_by(user_id=current_user.id).all()
+    items_with_details = []
+    for ui in user_items:
+        item = ShopItem.query.get(ui.item_id)
+        if item:
+            items_with_details.append({
+                'user_item': ui,
+                'item': item
+            })
 
     return render_template('user/profile.html',
                           favorites=favorites,
                           achievements=achievements,
                           all_achievements=all_achievements,
                           achievement_dict=achievement_dict,
-                          best_scores=best_scores)
+                          best_scores=best_scores,
+                          currency=currency,
+                          items_with_details=items_with_details)
 
 @user_bp.route('/edit_profile', methods=['POST'])
 @login_required

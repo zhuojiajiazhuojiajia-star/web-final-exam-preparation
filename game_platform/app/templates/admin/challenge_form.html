@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}{{ '添加挑战' if not challenge else '编辑挑战' }}{% endblock %}
+{% block content %}
+<div class="admin-section">
+    <div class="container">
+        <div class="admin-header">
+            <h1><i class="fas fa-tasks"></i> {{ '添加挑战' if not challenge else '编辑挑战' }}</h1>
+        </div>
+
+        <div class="auth-card" style="max-width: 600px; margin: 0 auto;">
+            <form method="POST" class="auth-form">
+                <div class="form-group">
+                    <label><i class="fas fa-tag"></i> 挑战名称</label>
+                    <input type="text" name="name" value="{{ challenge.name if challenge else '' }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-align-left"></i> 描述</label>
+                    <input type="text" name="description" value="{{ challenge.description if challenge else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-image"></i> 图标 (emoji)</label>
+                    <input type="text" name="icon" value="{{ challenge.icon if challenge else '🎯' }}" placeholder="如: 🎮, 💯, 🔥">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-cog"></i> 挑战类型</label>
+                    <select name="challenge_type" required>
+                        <option value="play_count" {% if challenge and challenge.challenge_type == 'play_count' %}selected{% endif %}>游玩次数</option>
+                        <option value="reach_score" {% if challenge and challenge.challenge_type == 'reach_score' %}selected{% endif %}>达到分数</option>
+                        <option value="total_score" {% if challenge and challenge.challenge_type == 'total_score' %}selected{% endif %}>累计总分</option>
+                        <option value="play_game" {% if challenge and challenge.challenge_type == 'play_game' %}selected{% endif %}>游玩指定游戏</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-bullseye"></i> 目标值</label>
+                    <input type="number" name="target_value" value="{{ challenge.target_value if challenge else 1 }}" min="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-coins"></i> 金币奖励</label>
+                    <input type="number" name="coin_reward" value="{{ challenge.coin_reward if challenge else 10 }}" min="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-signal"></i> 难度</label>
+                    <select name="difficulty">
+                        <option value="easy" {% if challenge and challenge.difficulty == 'easy' %}selected{% endif %}>简单</option>
+                        <option value="normal" {% if challenge and challenge.difficulty == 'normal' %}selected{% endif %}>普通</option>
+                        <option value="hard" {% if challenge and challenge.difficulty == 'hard' %}selected{% endif %}>困难</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-gamepad"></i> 关联游戏 (可选)</label>
+                    <select name="game_id">
+                        <option value="">任意游戏</option>
+                        {% for game in games %}
+                        <option value="{{ game.id }}" {% if challenge and challenge.game_id == game.id %}selected{% endif %}>{{ game.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {% if challenge %}
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="is_active" {% if challenge.is_active %}checked{% endif %}>
+                        启用此挑战
+                    </label>
+                </div>
+                {% endif %}
+
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i class="fas fa-save"></i> {{ '添加' if not challenge else '保存' }}
+                </button>
+            </form>
+        </div>
+
+        <a href="{{ url_for('admin.challenges') }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i> 返回挑战列表
+        </a>
+    </div>
+</div>
+{% endblock %}

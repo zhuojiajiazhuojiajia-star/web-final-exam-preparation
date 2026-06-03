@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}{{ '添加商品' if not item else '编辑商品' }}{% endblock %}
+{% block content %}
+<div class="admin-section">
+    <div class="container">
+        <div class="admin-header">
+            <h1><i class="fas fa-store"></i> {{ '添加商品' if not item else '编辑商品' }}</h1>
+        </div>
+
+        <div class="auth-card" style="max-width: 600px; margin: 0 auto;">
+            <form method="POST" class="auth-form">
+                <div class="form-group">
+                    <label><i class="fas fa-tag"></i> 商品名称</label>
+                    <input type="text" name="name" value="{{ item.name if item else '' }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-align-left"></i> 描述</label>
+                    <input type="text" name="description" value="{{ item.description if item else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-image"></i> 图标 (emoji)</label>
+                    <input type="text" name="icon" value="{{ item.icon if item else '🎁' }}" placeholder="如: 🎮, 🌟, 💎">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-folder"></i> 物品类型</label>
+                    <select name="item_type" required>
+                        <option value="skin" {% if item and item.item_type == 'skin' %}selected{% endif %}>皮肤</option>
+                        <option value="theme" {% if item and item.item_type == 'theme' %}selected{% endif %}>主题</option>
+                        <option value="effect" {% if item and item.item_type == 'effect' %}selected{% endif %}>特效</option>
+                        <option value="badge" {% if item and item.item_type == 'badge' %}selected{% endif %}>徽章</option>
+                        <option value="boost" {% if item and item.item_type == 'boost' %}selected{% endif %}>增益</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-gem"></i> 稀有度</label>
+                    <select name="rarity">
+                        <option value="common" {% if item and item.rarity == 'common' %}selected{% endif %}>普通</option>
+                        <option value="rare" {% if item and item.rarity == 'rare' %}selected{% endif %}>稀有</option>
+                        <option value="epic" {% if item and item.rarity == 'epic' %}selected{% endif %}>史诗</option>
+                        <option value="legendary" {% if item and item.rarity == 'legendary' %}selected{% endif %}>传说</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-coins"></i> 价格 (金币)</label>
+                    <input type="number" name="price" value="{{ item.price if item else 100 }}" min="0" required>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-boxes"></i> 库存 (-1 表示无限)</label>
+                    <input type="number" name="stock" value="{{ item.stock if item else -1 }">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-gamepad"></i> 关联游戏 (可选)</label>
+                    <select name="game_id">
+                        <option value="">通用物品</option>
+                        {% for game in games %}
+                        <option value="{{ game.id }}" {% if item and item.game_id == game.id %}selected{% endif %}>{{ game.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {% if item %}
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}>
+                        上架销售
+                    </label>
+                </div>
+                {% endif %}
+
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i class="fas fa-save"></i> {{ '添加' if not item else '保存' }}
+                </button>
+            </form>
+        </div>
+
+        <a href="{{ url_for('admin.shop_items') }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i> 返回商品列表
+        </a>
+    </div>
+</div>
+{% endblock %}

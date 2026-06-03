@@ -4,6 +4,8 @@
 <section class="admin-section">
     <div class="container">
         <h2 class="section-title"><i class="fas fa-tachometer-alt"></i> 管理后台</h2>
+        
+        <!-- 统计卡片 -->
         <div class="stats-grid">
             <div class="stat-card admin-stat">
                 <i class="fas fa-users"></i>
@@ -20,7 +22,42 @@
                 <h3>{{ stats.total_games_played }}</h3>
                 <p>游戏总次数</p>
             </div>
+            <div class="stat-card admin-stat">
+                <i class="fas fa-store"></i>
+                <h3>{{ stats.total_shop_items }}</h3>
+                <p>商城商品</p>
+            </div>
+            <div class="stat-card admin-stat">
+                <i class="fas fa-coins"></i>
+                <h3>{{ stats.total_coins }}</h3>
+                <p>流通金币</p>
+            </div>
         </div>
+        
+        <!-- 快捷管理 -->
+        <div class="admin-quick-links">
+            <a href="{{ url_for('admin.users') }}" class="quick-link-card">
+                <i class="fas fa-users"></i>
+                <span>用户管理</span>
+            </a>
+            <a href="{{ url_for('admin.games') }}" class="quick-link-card">
+                <i class="fas fa-gamepad"></i>
+                <span>游戏管理</span>
+            </a>
+            <a href="{{ url_for('admin.shop_items') }}" class="quick-link-card">
+                <i class="fas fa-store"></i>
+                <span>商城管理</span>
+            </a>
+            <a href="{{ url_for('admin.challenges') }}" class="quick-link-card">
+                <i class="fas fa-tasks"></i>
+                <span>挑战管理</span>
+            </a>
+            <a href="{{ url_for('admin.events') }}" class="quick-link-card">
+                <i class="fas fa-calendar-alt"></i>
+                <span>活动管理</span>
+            </a>
+        </div>
+        
         <div class="admin-grid">
             <div class="profile-card">
                 <h3><i class="fas fa-user-clock"></i> 最新注册用户</h3>
@@ -47,4 +84,38 @@
         </div>
     </div>
 </section>
+
+<style>
+.admin-quick-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.quick-link-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px;
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+    color: var(--gray-700);
+    text-decoration: none;
+}
+
+.quick-link-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+    color: var(--primary);
+}
+
+.quick-link-card i {
+    font-size: 2rem;
+    color: var(--primary);
+}
+</style>
 {% endblock %}

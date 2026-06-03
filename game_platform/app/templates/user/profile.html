@@ -14,6 +14,20 @@
                     </div>
                     <h2>{{ current_user.nickname or current_user.username }}</h2>
                     <p class="profile-bio">{{ current_user.bio }}</p>
+                    
+                    <!-- 金币信息 -->
+                    <div class="currency-display">
+                        <div class="currency-item">
+                            <i class="fas fa-coins"></i>
+                            <span class="currency-value">{{ currency.coins }}</span>
+                            <span class="currency-label">金币</span>
+                        </div>
+                        <div class="currency-stats">
+                            <small>累计获得: {{ currency.total_earned }}</small>
+                            <small>累计消费: {{ currency.total_spent }}</small>
+                        </div>
+                    </div>
+                    
                     <div class="profile-stats">
                         <div class="pstat">
                             <span class="pstat-value">{{ current_user.total_score }}</span>
@@ -23,6 +37,19 @@
                             <span class="pstat-value">{{ current_user.games_played }}</span>
                             <span class="pstat-label">游戏次数</span>
                         </div>
+                    </div>
+                    
+                    <!-- 快捷链接 -->
+                    <div class="profile-quick-links">
+                        <a href="{{ url_for('shop.index') }}" class="quick-link">
+                            <i class="fas fa-store"></i> 商城
+                        </a>
+                        <a href="{{ url_for('shop.my_items') }}" class="quick-link">
+                            <i class="fas fa-backpack"></i> 我的物品
+                        </a>
+                        <a href="{{ url_for('shop.daily_challenges') }}" class="quick-link">
+                            <i class="fas fa-tasks"></i> 每日任务
+                        </a>
                     </div>
                 </div>
 
@@ -65,6 +92,29 @@
 
             <!-- Right: Achievements & Favorites -->
             <div class="profile-main">
+                <!-- 我的物品 -->
+                {% if items_with_details %}
+                <div class="profile-card">
+                    <h3><i class="fas fa-backpack"></i> 我的物品 ({{ items_with_details|length }})</h3>
+                    <div class="my-items-grid">
+                        {% for item_data in items_with_details %}
+                        {% set item = item_data.item %}
+                        {% set user_item = item_data.user_item %}
+                        <div class="my-item-card {% if user_item.is_equipped %}equipped{% endif %}">
+                            <span class="item-icon">{{ item.icon }}</span>
+                            <span class="item-name">{{ item.name }}</span>
+                            {% if user_item.is_equipped %}
+                            <span class="equipped-tag">使用中</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <a href="{{ url_for('shop.my_items') }}" class="btn btn-outline btn-sm" style="margin-top: 10px;">
+                        管理物品 <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+                {% endif %}
+                
                 <!-- Achievements -->
                 <div class="profile-card">
                     <h3><i class="fas fa-trophy"></i> 我的成就 ({{ achievements|length }}/{{ all_achievements|length }})</h3>
@@ -126,4 +176,112 @@
         </div>
     </div>
 </section>
+
+<style>
+.currency-display {
+    background: linear-gradient(135deg, #ffd700, #ffb347);
+    border-radius: var(--radius-sm);
+    padding: 15px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.currency-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #5a4a00;
+}
+
+.currency-item i {
+    font-size: 1.5rem;
+}
+
+.currency-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+.currency-label {
+    font-size: 0.9rem;
+}
+
+.currency-stats {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 8px;
+    color: #7a6a20;
+    font-size: 0.75rem;
+}
+
+.profile-quick-links {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--gray-200);
+}
+
+.quick-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    transition: var(--transition);
+}
+
+.quick-link:hover {
+    color: var(--primary);
+}
+
+.quick-link i {
+    font-size: 1.2rem;
+}
+
+.my-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+}
+
+.my-item-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    background: var(--gray-100);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    position: relative;
+}
+
+.my-item-card.equipped {
+    background: linear-gradient(135deg, #f0fff4, #c6f6d5);
+    border: 1px solid var(--success);
+}
+
+.item-icon {
+    font-size: 2rem;
+    margin-bottom: 5px;
+}
+
+.item-name {
+    font-size: 0.8rem;
+    color: var(--gray-700);
+}
+
+.equipped-tag {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 0.65rem;
+    background: var(--success);
+    color: white;
+    padding: 1px 5px;
+    border-radius: 10px;
+}
+</style>
 {% endblock %}

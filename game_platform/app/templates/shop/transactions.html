@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+{% block title %}交易记录{% endblock %}
+{% block content %}
+<div class="transactions-section">
+    <div class="container">
+        <div class="transactions-header">
+            <h1><i class="fas fa-history"></i> 交易记录</h1>
+            <p>查看你的金币收支明细</p>
+            <div class="coin-display">
+                <i class="fas fa-coins"></i>
+                <span class="coin-amount">{{ currency.coins }}</span>
+                <span class="coin-label">金币</span>
+            </div>
+        </div>
+
+        <!-- 统计信息 -->
+        <div class="transactions-stats">
+            <div class="trans-stat income">
+                <i class="fas fa-arrow-up"></i>
+                <div class="stat-info">
+                    <span class="stat-value">{{ currency.total_earned }}</span>
+                    <span class="stat-label">累计获得</span>
+                </div>
+            </div>
+            <div class="trans-stat expense">
+                <i class="fas fa-arrow-down"></i>
+                <div class="stat-info">
+                    <span class="stat-value">{{ currency.total_spent }}</span>
+                    <span class="stat-label">累计消费</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 交易列表 -->
+        {% if transactions.items %}
+        <div class="transactions-list">
+            {% for trans in transactions.items %}
+            <div class="transaction-item {% if trans.amount > 0 %}income{% else %}expense{% endif %}">
+                <div class="trans-icon">
+                    {% if trans.transaction_type == 'game_reward' %}
+                    <i class="fas fa-gamepad"></i>
+                    {% elif trans.transaction_type == 'daily_task' %}
+                    <i class="fas fa-tasks"></i>
+                    {% elif trans.transaction_type == 'purchase' %}
+                    <i class="fas fa-shopping-cart"></i>
+                    {% elif trans.transaction_type == 'admin' %}
+                    <i class="fas fa-gift"></i>
+                    {% else %}
+                    <i class="fas fa-coins"></i>
+                    {% endif %}
+                </div>
+                <div class="trans-info">
+                    <h4>{{ trans.description or trans.transaction_type }}</h4>
+                    <p>{{ trans.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+                <div class="trans-amount">
+                    {% if trans.amount > 0 %}
+                    <span class="amount-income">+{{ trans.amount }}</span>
+                    {% else %}
+                    <span class="amount-expense">{{ trans.amount }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- 分页 -->
+        {% if transactions.pages > 1 %}
+        <div class="pagination">
+            {% if transactions.has_prev %}
+            <a href="{{ url_for('shop.transactions', page=transactions.prev_num) }}" class="btn btn-outline btn-sm">
+                <i class="fas fa-chevron-left"></i> 上一页
+            </a>
+            {% endif %}
+            <span class="page-info">第 {{ transactions.page }} / {{ transactions.pages }} 页</span>
+            {% if transactions.has_next %}
+            <a href="{{ url_for('shop.transactions', page=transactions.next_num) }}" class="btn btn-outline btn-sm">
+                下一页 <i class="fas fa-chevron-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-receipt"></i>
+            <h3>暂无交易记录</h3>
+            <p>开始游戏获取金币吧！</p>
+            <a href="{{ url_for('main.index') }}#games" class="btn btn-primary">
+                <i class="fas fa-gamepad"></i> 开始游戏
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- 快捷链接 -->
+        <div class="transactions-links">
+            <a href="{{ url_for('shop.index') }}" class="trans-link-card">
+                <i class="fas fa-store"></i>
+                <span>商城</span>
+            </a>
+            <a href="{{ url_for('shop.my_items') }}" class="trans-link-card">
+                <i class="fas fa-backpack"></i>
+                <span>我的物品</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.transactions-section {
+    padding: 40px 20px;
+    min-height: calc(100vh - 64px - 80px);
+}
+
+.transactions-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.transactions-header h1 {
+    font-size: 2.5rem;
+    color: var(--gray-900);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.transactions-header h1 i {
+    color: var(--primary);
+}
+
+.transactions-header p {
+    color: var(--gray-600);
+    margin-bottom: 20px;
+}
+
+.coin-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #ffd700, #ffb347);
+    color: #5a4a00;
+    padding: 12px 24px;
+    border-radius: 50px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
+
+.transactions-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    max-width: 500px;
+    margin: 0 auto 40px;
+}
+
+.trans-stat {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: white;
+    padding: 20px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.trans-stat.income i {
+    color: var(--success);
+}
+
+.trans-stat.expense i {
+    color: var(--danger);
+}
+
+.trans-stat i {
+    font-size: 2rem;
+}
+
+.stat-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+}
+
+.transactions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 600px;
+    margin: 0 auto 40px;
+}
+
+.transaction-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: white;
+    padding: 15px 20px;
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+}
+
+.transaction-item:hover {
+    box-shadow: var(--shadow-lg);
+}
+
+.transaction-item.income {
+    border-left: 4px solid var(--success);
+}
+
+.transaction-item.expense {
+    border-left: 4px solid var(--danger);
+}
+
+.trans-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gray-100);
+    border-radius: 50%;
+}
+
+.trans-icon i {
+    font-size: 1.2rem;
+    color: var(--primary);
+}
+
+.trans-info {
+    flex: 1;
+}
+
+.trans-info h4 {
+    font-size: 0.95rem;
+    margin-bottom: 3px;
+    color: var(--gray-900);
+}
+
+.trans-info p {
+    font-size: 0.8rem;
+    color: var(--gray-500);
+}
+
+.trans-amount {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.amount-income {
+    color: var(--success);
+}
+
+.amount-expense {
+    color: var(--danger);
+}
+
+.page-info {
+    color: var(--gray-600);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 40px;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: var(--gray-400);
+    margin-bottom: 20px;
+}
+
+.empty-state h3 {
+    font-size: 1.5rem;
+    color: var(--gray-700);
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    color: var(--gray-500);
+    margin-bottom: 20px;
+}
+
+.transactions-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.trans-link-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px;
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+    color: var(--gray-700);
+}
+
+.trans-link-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+    color: var(--primary);
+}
+
+.trans-link-card i {
+    font-size: 2rem;
+    color: var(--primary);
+}
+
+@media (max-width: 768px) {
+    .transactions-stats {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

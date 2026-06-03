@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}活动管理{% endblock %}
+{% block content %}
+<div class="admin-section">
+    <div class="container">
+        <div class="admin-header">
+            <h1><i class="fas fa-calendar-alt"></i> 活动管理</h1>
+            <a href="{{ url_for('admin.add_event') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> 添加活动
+            </a>
+        </div>
+
+        {% if events %}
+        <div class="admin-table-wrapper">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>图标</th>
+                        <th>名称</th>
+                        <th>类型</th>
+                        <th>开始时间</th>
+                        <th>结束时间</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in events %}
+                    <tr>
+                        <td class="item-icon-cell">{{ event.icon or '🎉' }}</td>
+                        <td>{{ event.name }}</td>
+                        <td>{{ event.event_type }}</td>
+                        <td>{{ event.start_time.strftime('%m-%d %H:%M') }}</td>
+                        <td>{{ event.end_time.strftime('%m-%d %H:%M') }}</td>
+                        <td>
+                            {% if event.is_active %}
+                                {% if event.start_time <= now and event.end_time >= now %}
+                                <span class="status-active">进行中</span>
+                                {% elif event.start_time > now %}
+                                <span style="color: var(--warning)">即将开始</span>
+                                {% else %}
+                                <span class="status-inactive">已结束</span>
+                                {% endif %}
+                            {% else %}
+                            <span class="status-inactive">已禁用</span>
+                            {% endif %}
+                        </td>
+                        <td class="action-cell">
+                            <button onclick="toggleEvent({{ event.id }})" class="btn btn-sm btn-outline">
+                                <i class="fas fa-power-off"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-text">暂无活动</div>
+        {% endif %}
+
+        <a href="{{ url_for('admin.dashboard') }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i> 返回管理面板
+        </a>
+    </div>
+</div>
+
+<style>
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.admin-header h1 {
+    font-size: 1.8rem;
+    color: var(--gray-900);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.admin-header h1 i {
+    color: var(--primary);
+}
+
+.admin-table-wrapper {
+    overflow-x: auto;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.admin-table th {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 500;
+}
+
+.admin-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.admin-table tr:hover {
+    background: var(--gray-100);
+}
+
+.item-icon-cell {
+    font-size: 1.5rem;
+}
+
+.status-active { color: var(--success); font-weight: 500; }
+.status-inactive { color: var(--danger); font-weight: 500; }
+
+.action-cell {
+    display: flex;
+    gap: 5px;
+}
+</style>
+
+<script>
+function toggleEvent(eventId) {
+    fetch(`/admin/events/toggle/${eventId}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.msg);
+        location.reload();
+    });
+}
+</script>
+{% endblock %}
