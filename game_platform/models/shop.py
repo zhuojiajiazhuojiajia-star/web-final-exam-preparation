@@ -65,6 +65,9 @@ class ShopItem(db.Model):
     
     # 物品效果配置（JSON格式存储）
     effect_config = db.Column(db.Text)  # 如: {"color": "#ff0000", "speed_boost": 1.5}
+    
+    # 皮肤配置（JSON格式存储：颜色、图案、特效等）
+    skin_config = db.Column(db.Text)  # 如: {"block_color": "#ff0000", "pattern": "neon", "effect": "glow"}
 
 
 class UserItem(db.Model):
@@ -74,10 +77,12 @@ class UserItem(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     item_id = db.Column(db.Integer, db.ForeignKey('shop_items.id'), nullable=False)
+    quantity = db.Column(db.Integer, default=1)  # 物品数量，用于堆叠
+    item_category = db.Column(db.String(30), default='skin')  # skin, badge, title, effect
     is_equipped = db.Column(db.Boolean, default=False)  # 是否装备中
     purchased_at = db.Column(db.DateTime, default=datetime.now)
     
-    __table_args__ = (db.UniqueConstraint('user_id', 'item_id'),)
+    __table_args__ = (db.UniqueConstraint('user_id', 'item_id', name='uix_user_item'),)
 
 
 # ========== 每日挑战系统 ==========

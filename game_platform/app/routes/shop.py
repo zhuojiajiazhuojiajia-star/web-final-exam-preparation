@@ -127,11 +127,6 @@ def buy(item_id):
     """购买商品"""
     item = ShopItem.query.get_or_404(item_id)
     
-    # 检查是否已拥有
-    existing = UserItem.query.filter_by(user_id=current_user.id, item_id=item_id).first()
-    if existing:
-        return jsonify({'code': 400, 'msg': '你已经拥有该物品了'})
-    
     # 检查库存
     if item.stock != -1 and item.stock <= 0:
         return jsonify({'code': 400, 'msg': '商品已售罄'})
@@ -143,8 +138,17 @@ def buy(item_id):
     
     # 扣款并添加物品
     if spend_coins(current_user.id, item.price, 'purchase', f'购买 {item.name}', item_id):
-        user_item = UserItem(user_id=current_user.id, item_id=item_id)
-        db.session.add(user_item)
+        existing = UserItem.query.filter_by(user_id=current_user.id, item_id=item_id).first()
+        if existing:
+            existing.quantity += 1
+        else:
+            user_item = UserItem(
+                user_id=current_user.id,
+                item_id=item_id,
+                quantity=1,
+                item_category=item.item_type
+            )
+            db.session.add(user_item)
         
         # 更新销量和库存
         item.sold_count += 1
@@ -378,6 +382,113 @@ def transactions():
     return render_template('shop/transactions.html', 
                           transactions=transactions,
                           currency=currency)
+
+
+# ========== 皮肤系统 API ==========
+
+@shop_bp.route('/api/skins')
+def api_skins():
+    """获取所有皮肤"""
+    # 获取所有皮肤类物品
+    skins = ShopItem.query.filter_by(item_type='skin', is_active=True).all()
+    
+    # 用户已拥有的皮肤
+    owned_skin_ids = []
+    if current_user.is_authenticated:
+        owned_skin_ids = [ui.item_id for ui in UserItem.query.filter_by(
+            user_id=current_user.id, 
+            item_category='skin'
+        ).all()]
+    
+    # 用户已装备的皮肤
+    equipped_skin_ids = []
+    if current_user.is_authenticated:
+        equipped_skin_ids = [ui.item_id for ui in UserItem.query.filter_by(
+            user_id=current_user.id, 
+            item_category='skin',
+            is_equipped=True
+        ).all()]
+    
+    skins_data = []
+    for skin in skins:
+        import json
+        skin_config = json.loads(skin.skin_config) if skin.skin_config else {}
+        skins_data.append({
+            'id': skin.id,
+            'name': skin.name,
+            'description': skin.description,
+            'icon': skin.icon,
+            'price': skin.price,
+            'rarity': skin.rarity,
+            'game_id': skin.game_id,
+            'skin_config': skin_config,
+            'is_owned': skin.id in owned_skin_ids,
+            'is_equipped': skin.id in equipped_skin_ids
+        })
+    
+    return jsonify({'code': 200, 'skins': skins_data})
+
+
+@shop_bp.route('/api/my-skins')
+@login_required
+def api_my_skins():
+    """获取我的皮肤"""
+    user_skins = UserItem.query.filter_by(
+        user_id=current_user.id, 
+        item_category='skin'
+    ).all()
+    
+    skins_data = []
+    for us in user_skins:
+        skin = ShopItem.query.get(us.item_id)
+        if skin:
+            import json
+            skin_config = json.loads(skin.skin_config) if skin.skin_config else {}
+            skins_data.append({
+                'id': skin.id,
+                'name': skin.name,
+                'description': skin.description,
+                'icon': skin.icon,
+                'rarity': skin.rarity,
+                'game_id': skin.game_id,
+                'skin_config': skin_config,
+                'is_equipped': us.is_equipped,
+                'quantity': us.quantity
+            })
+    
+    return jsonify({'code': 200, 'skins': skins_data})
+
+
+@shop_bp.route('/api/preview', methods=['POST'])
+@login_required
+def api_preview():
+    """预览皮肤效果（临时应用皮肤到游戏）"""
+    data = request.get_json()
+    skin_id = data.get('skin_id')
+    
+    if not skin_id:
+        return jsonify({'code': 400, 'msg': '缺少皮肤ID'})
+    
+    skin = ShopItem.query.get(skin_id)
+    if not skin:
+        return jsonify({'code': 404, 'msg': '皮肤不存在'})
+    
+    if skin.item_type != 'skin':
+        return jsonify({'code': 400, 'msg': '该物品不是皮肤'})
+    
+    import json
+    skin_config = json.loads(skin.skin_config) if skin.skin_config else {}
+    
+    return jsonify({
+        'code': 200, 
+        'msg': '预览成功',
+        'preview': {
+            'skin_id': skin.id,
+            'name': skin.name,
+            'icon': skin.icon,
+            'skin_config': skin_config
+        }
+    })
 
 
 # ========== API: 获取用户金币 ==========

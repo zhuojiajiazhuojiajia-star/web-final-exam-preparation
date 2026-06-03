@@ -1,18 +1,34 @@
 {% extends "game/game_base.html" %}
 {% block title %}俄罗斯方块{% endblock %}
 {% block game_content %}
-<div style="display:flex;gap:15px;justify-content:center;align-items:flex-start;">
-    <canvas id="tetrisCanvas" width="250" height="500" style="background:#0f0f23;border-radius:8px;border:2px solid #333;"></canvas>
-    <div style="text-align:center;">
-        <div style="background:#1a1a2e;border-radius:8px;padding:15px;margin-bottom:10px;">
-            <p style="color:#888;font-size:0.8rem;margin-bottom:5px;">下一个</p>
-            <canvas id="nextCanvas" width="100" height="100" style="background:#0f0f23;border-radius:6px;"></canvas>
+<div id="multiplayerMode" style="display:none;">
+    <div style="display:flex;gap:15px;justify-content:center;align-items:flex-start;">
+        <div class="player-board">
+            <h4 id="player1Header" style="text-align:center;color:#667eea;margin:0 0 10px 0;">玩家1</h4>
+            <canvas id="tetrisCanvasP1" width="250" height="500" style="background:#0f0f23;border-radius:8px;border:2px solid #667eea;"></canvas>
+            <div id="score1" style="text-align:center;margin-top:10px;color:#667eea;font-size:1.5rem;font-weight:bold;">0</div>
         </div>
-        <div style="background:#1a1a2e;border-radius:8px;padding:15px;">
-            <p style="color:#888;font-size:0.8rem;">等级</p>
-            <p id="tetrisLevel" style="color:#667eea;font-size:1.5rem;font-weight:700;">1</p>
-            <p style="color:#888;font-size:0.8rem;margin-top:8px;">消行</p>
-            <p id="tetrisLines" style="color:#48bb78;font-size:1.5rem;font-weight:700;">0</p>
+        <div class="player-board">
+            <h4 id="player2Header" style="text-align:center;color:#48bb78;margin:0 0 10px 0;">玩家2</h4>
+            <canvas id="tetrisCanvasP2" width="250" height="500" style="background:#0f0f23;border-radius:8px;border:2px solid #48bb78;"></canvas>
+            <div id="score2" style="text-align:center;margin-top:10px;color:#48bb78;font-size:1.5rem;font-weight:bold;">0</div>
+        </div>
+    </div>
+</div>
+<div id="singleplayerMode">
+    <div style="display:flex;gap:15px;justify-content:center;align-items:flex-start;">
+        <canvas id="tetrisCanvas" width="250" height="500" style="background:#0f0f23;border-radius:8px;border:2px solid #333;"></canvas>
+        <div style="text-align:center;">
+            <div style="background:#1a1a2e;border-radius:8px;padding:15px;margin-bottom:10px;">
+                <p style="color:#888;font-size:0.8rem;margin-bottom:5px;">下一个</p>
+                <canvas id="nextCanvas" width="100" height="100" style="background:#0f0f23;border-radius:6px;"></canvas>
+            </div>
+            <div style="background:#1a1a2e;border-radius:8px;padding:15px;">
+                <p style="color:#888;font-size:0.8rem;">等级</p>
+                <p id="tetrisLevel" style="color:#667eea;font-size:1.5rem;font-weight:700;">1</p>
+                <p style="color:#888;font-size:0.8rem;margin-top:8px;">消行</p>
+                <p id="tetrisLines" style="color:#48bb78;font-size:1.5rem;font-weight:700;">0</p>
+            </div>
         </div>
     </div>
 </div>
@@ -34,9 +50,23 @@
 <script>
 const COLS = 10, ROWS = 20, BLOCK = 25;
 const canvas = document.getElementById('tetrisCanvas');
-const ctx = canvas.getContext('2d');
+const ctx = canvas ? canvas.getContext('2d') : null;
 const nextCanvas = document.getElementById('nextCanvas');
-const nextCtx = nextCanvas.getContext('2d');
+const nextCtx = nextCanvas ? nextCanvas.getContext('2d') : null;
+
+// Multiplayer mode
+let isMultiplayer = false;
+let roomId = null;
+let currentPlayer = 1;
+let myPlayerId = null;
+let opponentPlayerId = null;
+let pollInterval = null;
+
+// Canvas for multiplayer
+let canvasP1 = document.getElementById('tetrisCanvasP1');
+let canvasP2 = document.getElementById('tetrisCanvasP2');
+let ctxP1 = canvasP1 ? canvasP1.getContext('2d') : null;
+let ctxP2 = canvasP2 ? canvasP2.getContext('2d') : null;
 
 const SHAPES = {
     I: {shape:[[1,1,1,1]], color:'#00f5ff'},
@@ -49,7 +79,12 @@ const SHAPES = {
 };
 const PIECE_NAMES = Object.keys(SHAPES);
 
+// Single player variables
 let board, current, next, score, lines, level, dropInterval, dropTimer, gameActive, animFrame, lastDropTime;
+
+// Multiplayer variables
+let board1, current1, next1, score1, dropInterval1, lastDropTime1, animFrame1, gameActive1;
+let board2, current2, next2, score2, dropInterval2, lastDropTime2, animFrame2, gameActive2;
 
 function initTetris() {
     board = Array.from({length:ROWS}, () => Array(COLS).fill(null));
@@ -60,10 +95,10 @@ function initTetris() {
     current = newPiece();
     next = newPiece();
     updateScore(0);
-    document.getElementById('tetrisLevel').textContent = level;
-    document.getElementById('tetrisLines').textContent = lines;
-    drawBoard();
-    drawNext();
+    if (document.getElementById('tetrisLevel')) document.getElementById('tetrisLevel').textContent = level;
+    if (document.getElementById('tetrisLines')) document.getElementById('tetrisLines').textContent = lines;
+    if (ctx) drawBoard();
+    if (nextCtx) drawNext();
 }
 
 function newPiece() {
@@ -72,7 +107,6 @@ function newPiece() {
     return {
         shape: s.shape.map(r => [...r]),
         color: s.color,
-        // 修复：生成在顶部上方 2 格，给玩家缓冲时间
         x: Math.floor((COLS - s.shape[0].length) / 2),
         y: -2
     };
@@ -90,6 +124,7 @@ function drawBlock(ctx, x, y, color, size=BLOCK) {
 }
 
 function drawBoard() {
+    if (!ctx) return;
     ctx.fillStyle = '#0f0f23';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
@@ -102,7 +137,6 @@ function drawBoard() {
             if (board[r][c]) drawBlock(ctx, c, r, board[r][c]);
     
     if (current) {
-        // Ghost piece
         let ghostY = current.y;
         while (isValid(current.shape, current.x, ghostY+1)) ghostY++;
         current.shape.forEach((row, r) => row.forEach((v, c) => {
@@ -112,7 +146,6 @@ function drawBoard() {
             }
         }));
         
-        // Current piece
         current.shape.forEach((row, r) => row.forEach((v, c) => {
             if (v && current.y + r >= 0) drawBlock(ctx, current.x+c, current.y+r, current.color);
         }));
@@ -120,6 +153,7 @@ function drawBoard() {
 }
 
 function drawNext() {
+    if (!nextCtx) return;
     nextCtx.fillStyle = '#0f0f23';
     nextCtx.fillRect(0, 0, 100, 100);
     if (!next) return;
@@ -143,7 +177,6 @@ function rotate(shape) {
     return Array.from({length:cols}, (_, c) => Array.from({length:rows}, (_, r) => shape[rows-1-r][c]));
 }
 
-// 修复：硬降计分改为落地时计算
 function place() {
     let dropDistance = 0;
     current.shape.forEach((row, r) => row.forEach((v, c) => {
@@ -153,7 +186,6 @@ function place() {
             dropDistance = Math.max(dropDistance, boardY);
         }
     }));
-    // 硬降奖励：每格 2 分
     if (hardDropActive) {
         score += dropDistance * 2;
         hardDropActive = false;
@@ -162,7 +194,6 @@ function place() {
     current = next;
     next = newPiece();
     drawNext();
-    // 修复：检查新方块是否能放置（考虑顶部缓冲）
     if (!isValid(current.shape, current.x, current.y)) {
         gameActive = false;
         stopTimer();
@@ -190,15 +221,14 @@ function clearLines() {
         level = Math.floor(lines / 10) + 1;
         dropInterval = Math.max(100, 1000 - (level-1) * 80);
         updateScore(score);
-        document.getElementById('tetrisLevel').textContent = level;
-        document.getElementById('tetrisLines').textContent = lines;
+        if (document.getElementById('tetrisLevel')) document.getElementById('tetrisLevel').textContent = level;
+        if (document.getElementById('tetrisLines')) document.getElementById('tetrisLines').textContent = lines;
     }
 }
 
 function tick(timestamp) {
     if (!gameActive) return;
     
-    // 修复：使用基于时间的下落，而不是固定间隔
     if (!lastDropTime) lastDropTime = timestamp;
     const elapsed = timestamp - lastDropTime;
     
@@ -222,11 +252,9 @@ function tetrisMove(dir) {
     drawBoard();
 }
 
-// 修复：旋转 wall-kick 支持 2 格偏移
 function tetrisRotate() {
     if (!gameActive || !current) return;
     const rotated = rotate(current.shape);
-    // 尝试不同偏移：0, -1, +1, -2, +2
     const kicks = [0, -1, 1, -2, 2];
     for (const kick of kicks) {
         if (isValid(rotated, current.x + kick, current.y)) {
@@ -278,7 +306,6 @@ function startGame() {
     gameRunning = true;
 }
 
-// 修复：暂停时正确停止 requestAnimationFrame
 function pauseGame() {
     if (!gameActive && !paused) return;
     paused = !paused;
@@ -298,11 +325,330 @@ function resetGame() {
     if (animFrame) cancelAnimationFrame(animFrame);
     stopTimer();
     gameSeconds = 0;
-    document.getElementById('gameTimer').textContent = '0:00';
+    if (document.getElementById('gameTimer')) document.getElementById('gameTimer').textContent = '0:00';
     initTetris();
     gameRunning = false;
 }
 
+// Multiplayer Functions
+function initMultiplayerMode(p1Id, p2Id, p1Name, p2Name, rId) {
+    isMultiplayer = true;
+    roomId = rId;
+    myPlayerId = p1Id;
+    opponentPlayerId = p2Id;
+    
+    document.getElementById('multiplayerMode').style.display = 'block';
+    document.getElementById('singleplayerMode').style.display = 'none';
+    document.getElementById('player1Header').textContent = p1Name;
+    document.getElementById('player2Header').textContent = p2Name;
+    
+    // Initialize player 1 board (left)
+    board1 = Array.from({length:ROWS}, () => Array(COLS).fill(null));
+    score1 = 0;
+    dropInterval1 = 1000;
+    lastDropTime1 = 0;
+    gameActive1 = true;
+    current1 = newPieceMP(1);
+    next1 = newPieceMP(1);
+    
+    // Initialize player 2 board (right)
+    board2 = Array.from({length:ROWS}, () => Array(COLS).fill(null));
+    score2 = 0;
+    dropInterval2 = 1000;
+    lastDropTime2 = 0;
+    gameActive2 = true;
+    current2 = newPieceMP(2);
+    next2 = newPieceMP(2);
+    
+    updateScoreDisplay();
+    drawBoards();
+    
+    // Start polling for room updates
+    pollInterval = setInterval(pollRoom, 2000);
+}
+
+function newPieceMP(player) {
+    const name = PIECE_NAMES[Math.floor(Math.random() * PIECE_NAMES.length)];
+    const s = SHAPES[name];
+    return {
+        shape: s.shape.map(r => [...r]),
+        color: s.color,
+        x: Math.floor((COLS - s.shape[0].length) / 2),
+        y: -2
+    };
+}
+
+function drawBoards() {
+    if (!ctxP1 || !ctxP2) return;
+    
+    // Draw player 1 board
+    ctxP1.fillStyle = '#0f0f23';
+    ctxP1.fillRect(0, 0, canvasP1.width, canvasP1.height);
+    ctxP1.strokeStyle = 'rgba(255,255,255,0.03)';
+    for (let r = 0; r <= ROWS; r++) { ctxP1.beginPath(); ctxP1.moveTo(0,r*BLOCK); ctxP1.lineTo(COLS*BLOCK,r*BLOCK); ctxP1.stroke(); }
+    for (let c = 0; c <= COLS; c++) { ctxP1.beginPath(); ctxP1.moveTo(c*BLOCK,0); ctxP1.lineTo(c*BLOCK,ROWS*BLOCK); ctxP1.stroke(); }
+    for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++)
+            if (board1[r][c]) drawBlock(ctxP1, c, r, board1[r][c]);
+    if (current1) {
+        current1.shape.forEach((row, r) => row.forEach((v, c) => {
+            if (v && current1.y + r >= 0) drawBlock(ctxP1, current1.x+c, current1.y+r, current1.color);
+        }));
+    }
+    
+    // Draw player 2 board
+    ctxP2.fillStyle = '#0f0f23';
+    ctxP2.fillRect(0, 0, canvasP2.width, canvasP2.height);
+    ctxP2.strokeStyle = 'rgba(255,255,255,0.03)';
+    for (let r = 0; r <= ROWS; r++) { ctxP2.beginPath(); ctxP2.moveTo(0,r*BLOCK); ctxP2.lineTo(COLS*BLOCK,r*BLOCK); ctxP2.stroke(); }
+    for (let c = 0; c <= COLS; c++) { ctxP2.beginPath(); ctxP2.moveTo(c*BLOCK,0); ctxP2.lineTo(c*BLOCK,ROWS*BLOCK); ctxP2.stroke(); }
+    for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++)
+            if (board2[r][c]) drawBlock(ctxP2, c, r, board2[r][c]);
+    if (current2) {
+        current2.shape.forEach((row, r) => row.forEach((v, c) => {
+            if (v && current2.y + r >= 0) drawBlock(ctxP2, current2.x+c, current2.y+r, current2.color);
+        }));
+    }
+}
+
+function isValidMP(shape, px, py, board) {
+    return shape.every((row, r) => row.every((v, c) => {
+        if (!v) return true;
+        const x = px+c, y = py+r;
+        return x >= 0 && x < COLS && y < ROWS && (y < 0 || !board[y][x]);
+    }));
+}
+
+function placeMP(player) {
+    let board, current, next;
+    if (player === 1) {
+        board = board1; current = current1; next = next1;
+    } else {
+        board = board2; current = current2; next = next2;
+    }
+    
+    current.shape.forEach((row, r) => row.forEach((v, c) => {
+        if (v) {
+            const boardY = current.y + r;
+            if (boardY >= 0) board[boardY][current.x+c] = current.color;
+        }
+    }));
+    
+    let cleared = 0;
+    for (let r = ROWS-1; r >= 0; r--) {
+        if (board[r].every(cell => cell !== null)) {
+            board.splice(r, 1);
+            board.unshift(Array(COLS).fill(null));
+            cleared++;
+            r++;
+        }
+    }
+    
+    if (player === 1) {
+        score1 += cleared * 100;
+        current1 = next1;
+        next1 = newPieceMP(1);
+        if (!isValidMP(current1.shape, current1.x, current1.y, board1)) {
+            gameActive1 = false;
+        }
+    } else {
+        score2 += cleared * 100;
+        current2 = next2;
+        next2 = newPieceMP(2);
+        if (!isValidMP(current2.shape, current2.x, current2.y, board2)) {
+            gameActive2 = false;
+        }
+    }
+    
+    updateScoreDisplay();
+    drawBoards();
+}
+
+function tickMP(timestamp, player) {
+    let gameActive, dropInterval, lastDropTime, current, board;
+    
+    if (player === 1) {
+        gameActive = gameActive1;
+        dropInterval = dropInterval1;
+        lastDropTime = lastDropTime1;
+        current = current1;
+        board = board1;
+    } else {
+        gameActive = gameActive2;
+        dropInterval = dropInterval2;
+        lastDropTime = lastDropTime2;
+        current = current2;
+        board = board2;
+    }
+    
+    if (!gameActive) return;
+    
+    if (!lastDropTime) {
+        if (player === 1) lastDropTime1 = timestamp;
+        else lastDropTime2 = timestamp;
+    }
+    
+    const elapsed = timestamp - (player === 1 ? lastDropTime1 : lastDropTime2);
+    
+    if (elapsed >= dropInterval) {
+        if (isValidMP(current.shape, current.x, current.y+1, board)) {
+            current.y++;
+            if (player === 1) current1 = current;
+            else current2 = current;
+        } else {
+            placeMP(player);
+        }
+        if (player === 1) lastDropTime1 = timestamp;
+        else lastDropTime2 = timestamp;
+    }
+    
+    drawBoards();
+    
+    // Check game over
+    if (player === 1 && !gameActive1) {
+        endMultiplayerGame(1);
+    } else if (player === 2 && !gameActive2) {
+        endMultiplayerGame(2);
+    }
+}
+
+function updateScoreDisplay() {
+    document.getElementById('score1').textContent = score1;
+    document.getElementById('score2').textContent = score2;
+    
+    // Update to game_base score display
+    const scoreEl = document.getElementById('currentScore');
+    if (scoreEl) scoreEl.textContent = currentPlayer === 1 ? score1 : score2;
+}
+
+function endMultiplayerGame(loser) {
+    stopTimer();
+    if (pollInterval) clearInterval(pollInterval);
+    
+    const winner = loser === 1 ? 2 : 1;
+    const winnerScore = winner === 1 ? score1 : score2;
+    
+    document.getElementById('finalScore').textContent = winnerScore;
+    document.getElementById('gameOverMsg').textContent = `玩家${winner}胜利！`;
+    document.getElementById('gameOverOverlay').classList.add('active');
+    
+    // Submit score
+    if (roomId) {
+        fetch('/multiplayer/api/update-score', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({room_id: roomId, score: currentPlayer === 1 ? score1 : score2})
+        });
+        
+        fetch('/multiplayer/api/end-game', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({room_id: roomId})
+        });
+    }
+}
+
+function pollRoom() {
+    if (!roomId) return;
+    
+    fetch('/multiplayer/api/room/' + roomId)
+        .then(res => res.json())
+        .then(data => {
+            if (data.code === 200) {
+                // Update scores from server
+                if (data.data.player1_score !== score1) {
+                    score1 = data.data.player1_score;
+                    updateScoreDisplay();
+                }
+                if (data.data.player2_score !== score2) {
+                    score2 = data.data.player2_score;
+                    updateScoreDisplay();
+                }
+                
+                // Check if game ended
+                if (data.data.status === 'finished') {
+                    endMultiplayerGame(currentPlayer);
+                }
+            }
+        });
+}
+
+// Multiplayer controls
+document.addEventListener('keydown', e => {
+    if (!isMultiplayer) return;
+    
+    if (currentPlayer === 1) {
+        if (!gameActive1) return;
+        switch(e.key) {
+            case 'ArrowLeft': e.preventDefault(); 
+                if (isValidMP(current1.shape, current1.x-1, current1.y, board1)) current1.x--;
+                drawBoards(); break;
+            case 'ArrowRight': e.preventDefault();
+                if (isValidMP(current1.shape, current1.x+1, current1.y, board1)) current1.x++;
+                drawBoards(); break;
+            case 'ArrowDown': e.preventDefault();
+                if (isValidMP(current1.shape, current1.x, current1.y+1, board1)) current1.y++;
+                drawBoards(); break;
+            case 'ArrowUp': e.preventDefault();
+                const rotated = rotate(current1.shape);
+                if (isValidMP(rotated, current1.x, current1.y, board1)) current1.shape = rotated;
+                drawBoards(); break;
+            case ' ':
+                e.preventDefault();
+                while (isValidMP(current1.shape, current1.x, current1.y+1, board1)) current1.y++;
+                placeMP(1);
+                drawBoards();
+                break;
+        }
+    }
+});
+
+// Game loop for multiplayer
+let mpAnimFrame1, mpAnimFrame2;
+function startMultiplayerGame(p1Id, p2Id, p1Name, p2Name, rId) {
+    initMultiplayerMode(p1Id, p2Id, p1Name, p2Name, rId);
+    startTimer();
+    
+    function gameLoop1(timestamp) {
+        if (!gameActive1) return;
+        tickMP(timestamp, 1);
+        mpAnimFrame1 = requestAnimationFrame(gameLoop1);
+    }
+    
+    function gameLoop2(timestamp) {
+        if (!gameActive2) return;
+        tickMP(timestamp, 2);
+        mpAnimFrame2 = requestAnimationFrame(gameLoop2);
+    }
+    
+    mpAnimFrame1 = requestAnimationFrame(gameLoop1);
+    mpAnimFrame2 = requestAnimationFrame(gameLoop2);
+}
+
+// Check URL params for room
+const urlParams = new URLSearchParams(window.location.search);
+const roomIdParam = urlParams.get('room_id');
+if (roomIdParam) {
+    roomId = roomIdParam;
+    fetch('/multiplayer/api/room/' + roomId)
+        .then(res => res.json())
+        .then(data => {
+            if (data.code === 200) {
+                // Detect which player you are based on current user
+                // For simplicity, assume player 1
+                startMultiplayerGame(
+                    data.data.player1_id, 
+                    data.data.player2_id,
+                    data.data.player1_name,
+                    data.data.player2_name,
+                    roomId
+                );
+            }
+        });
+}
+
+// Initialize single player
 initTetris();
 </script>
 {% endblock %}

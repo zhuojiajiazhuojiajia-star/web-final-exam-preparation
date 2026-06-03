@@ -3,6 +3,9 @@ from models import db
 from models.user import User
 from models.game import Game, Achievement
 from models.shop import ShopItem, DailyChallenge, GameEvent
+from models.achievement import Achievement as NewAchievement
+from models.lottery import Lottery, LotteryPrize
+from models.badge import Badge
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
 
@@ -76,12 +79,41 @@ def init_database():
 
         # Create shop items
         shop_items_data = [
-            # 皮肤类
-            {'name': '金色蛇身', 'description': '贪吃蛇专属金色皮肤', 'icon': '🌟', 'item_type': 'skin', 'price': 100, 'game_id': 1, 'rarity': 'rare'},
-            {'name': '彩虹方块', 'description': '俄罗斯方块彩虹主题', 'icon': '🌈', 'item_type': 'skin', 'price': 150, 'game_id': 4, 'rarity': 'epic'},
-            {'name': '霓虹球', 'description': '打砖块霓虹球效果', 'icon': '✨', 'item_type': 'skin', 'price': 120, 'game_id': 6, 'rarity': 'rare'},
+            # ========== 皮肤类 ==========
+            # 俄罗斯方块皮肤 (game_id=4)
+            {'name': '经典方块', 'description': '经典俄罗斯方块配色，简约大方', 'icon': '🟫', 'item_type': 'skin', 'price': 50, 'game_id': 4, 'rarity': 'common', 'skin_config': '{"block_color": "#8B4513", "pattern": "classic", "effect": "none", "game_name": "俄罗斯方块"}'},
+            {'name': '霓虹方块', 'description': '炫酷霓虹灯光效果，让方块闪耀', 'icon': '🔮', 'item_type': 'skin', 'price': 150, 'game_id': 4, 'rarity': 'epic', 'skin_config': '{"block_color": "#FF00FF", "pattern": "neon", "effect": "glow", "game_name": "俄罗斯方块"}'},
+            {'name': '水彩方块', 'description': '柔和的水彩渐变，文艺清新', 'icon': '🎨', 'item_type': 'skin', 'price': 120, 'game_id': 4, 'rarity': 'rare', 'skin_config': '{"block_color": "#FFB6C1", "pattern": "watercolor", "effect": "gradient", "game_name": "俄罗斯方块"}'},
+            {'name': '暗黑方块', 'description': '神秘暗黑风格，炫酷到底', 'icon': '🖤', 'item_type': 'skin', 'price': 100, 'game_id': 4, 'rarity': 'rare', 'skin_config': '{"block_color": "#2C2C2C", "pattern": "dark", "effect": "shadow", "game_name": "俄罗斯方块"}'},
+            {'name': '彩虹方块', 'description': '彩虹七色变换，绚丽多彩', 'icon': '🌈', 'item_type': 'skin', 'price': 200, 'game_id': 4, 'rarity': 'legendary', 'skin_config': '{"block_color": "#FF0000", "pattern": "rainbow", "effect": "shimmer", "game_name": "俄罗斯方块"}'},
+            {'name': '金色方块', 'description': '尊贵的金色方块，身份的象征', 'icon': '🟡', 'item_type': 'skin', 'price': 180, 'game_id': 4, 'rarity': 'legendary', 'skin_config': '{"block_color": "#FFD700", "pattern": "metallic", "effect": "shine", "game_name": "俄罗斯方块"}'},
+            {'name': '海洋方块', 'description': '清凉海洋蓝，如同置身海底', 'icon': '🌊', 'item_type': 'skin', 'price': 130, 'game_id': 4, 'rarity': 'rare', 'skin_config': '{"block_color": "#00CED1", "pattern": "ocean", "effect": "wave", "game_name": "俄罗斯方块"}'},
+            {'name': '森林方块', 'description': '自然森林绿，清新自然', 'icon': '🌲', 'item_type': 'skin', 'price': 110, 'game_id': 4, 'rarity': 'rare', 'skin_config': '{"block_color": "#228B22", "pattern": "forest", "effect": "leaf", "game_name": "俄罗斯方块"}'},
             
-            # 主题类
+            # 贪吃蛇皮肤 (game_id=1)
+            {'name': '绿色蛇身', 'description': '经典绿色小蛇，童年的回忆', 'icon': '🐍', 'item_type': 'skin', 'price': 50, 'game_id': 1, 'rarity': 'common', 'skin_config': '{"block_color": "#32CD32", "pattern": "classic", "effect": "none", "game_name": "贪吃蛇"}'},
+            {'name': '蓝色蛇身', 'description': '蓝色冷酷风格，冷静应对', 'icon': '💎', 'item_type': 'skin', 'price': 80, 'game_id': 1, 'rarity': 'rare', 'skin_config': '{"block_color": "#4169E1", "pattern": "cool", "effect": "glow", "game_name": "贪吃蛇"}'},
+            {'name': '粉色蛇身', 'description': '可爱粉红风格，少女心满满', 'icon': '💗', 'item_type': 'skin', 'price': 90, 'game_id': 1, 'rarity': 'rare', 'skin_config': '{"block_color": "#FF69B4", "pattern": "cute", "effect": "sparkle", "game_name": "贪吃蛇"}'},
+            {'name': '金色蛇身', 'description': '金色炫酷小蛇，光芒四射', 'icon': '🌟', 'item_type': 'skin', 'price': 150, 'game_id': 1, 'rarity': 'epic', 'skin_config': '{"block_color": "#FFD700", "pattern": "golden", "effect": "shine", "game_name": "贪吃蛇"}'},
+            {'name': '彩虹蛇身', 'description': '彩虹渐变小蛇，绚丽夺目', 'icon': '🦄', 'item_type': 'skin', 'price': 200, 'game_id': 1, 'rarity': 'legendary', 'skin_config': '{"block_color": "#FF0000", "pattern": "rainbow", "effect": "shimmer", "game_name": "贪吃蛇"}'},
+            {'name': '暗黑蛇身', 'description': '神秘暗黑风格，霸气侧漏', 'icon': '🖤', 'item_type': 'skin', 'price': 100, 'game_id': 1, 'rarity': 'rare', 'skin_config': '{"block_color": "#1a1a1a", "pattern": "dark", "effect": "shadow", "game_name": "贪吃蛇"}'},
+            {'name': '火焰蛇身', 'description': '烈焰般的红色，热情如火', 'icon': '🔥', 'item_type': 'skin', 'price': 160, 'game_id': 1, 'rarity': 'epic', 'skin_config': '{"block_color": "#FF4500", "pattern": "fire", "effect": "flame", "game_name": "贪吃蛇"}'},
+            {'name': '冰霜蛇身', 'description': '冰晶般的蓝色，寒气逼人', 'icon': '❄️', 'item_type': 'skin', 'price': 160, 'game_id': 1, 'rarity': 'epic', 'skin_config': '{"block_color": "#00FFFF", "pattern": "ice", "effect": "crystal", "game_name": "贪吃蛇"}'},
+            
+            # 打砖块皮肤 (game_id=6)
+            {'name': '霓虹球', 'description': '炫酷霓虹球效果，发光闪烁', 'icon': '✨', 'item_type': 'skin', 'price': 120, 'game_id': 6, 'rarity': 'rare', 'skin_config': '{"block_color": "#FF00FF", "pattern": "neon", "effect": "glow", "game_name": "打砖块"}'},
+            {'name': '火焰球', 'description': '烈焰包裹的球，燃烧一切', 'icon': '🔥', 'item_type': 'skin', 'price': 140, 'game_id': 6, 'rarity': 'epic', 'skin_config': '{"block_color": "#FF4500", "pattern": "fire", "effect": "trail", "game_name": "打砖块"}'},
+            {'name': '星光球', 'description': '星星点点的球，璀璨夺目', 'icon': '⭐', 'item_type': 'skin', 'price': 130, 'game_id': 6, 'rarity': 'epic', 'skin_config': '{"block_color": "#FFD700", "pattern": "star", "effect": "sparkle", "game_name": "打砖块"}'},
+            {'name': '彩虹球', 'description': '彩虹色的球，七彩斑斓', 'icon': '🌈', 'item_type': 'skin', 'price': 180, 'game_id': 6, 'rarity': 'legendary', 'skin_config': '{"block_color": "#FF0000", "pattern": "rainbow", "effect": "shimmer", "game_name": "打砖块"}'},
+            {'name': '经典球', 'description': '经典白色球，简约不简单', 'icon': '⚪', 'item_type': 'skin', 'price': 50, 'game_id': 6, 'rarity': 'common', 'skin_config': '{"block_color": "#FFFFFF", "pattern": "classic", "effect": "none", "game_name": "打砖块"}'},
+            
+            # 2048皮肤 (game_id=2)
+            {'name': '经典2048', 'description': '经典橙色风格，简约大方', 'icon': '🟧', 'item_type': 'skin', 'price': 50, 'game_id': 2, 'rarity': 'common', 'skin_config': '{"block_color": "#ED9121", "pattern": "classic", "effect": "none", "game_name": "2048"}'},
+            {'name': '霓虹2048', 'description': '霓虹灯光效果，炫酷潮流', 'icon': '🔮', 'item_type': 'skin', 'price': 150, 'game_id': 2, 'rarity': 'epic', 'skin_config': '{"block_color": "#FF00FF", "pattern": "neon", "effect": "glow", "game_name": "2048"}'},
+            {'name': '暗黑2048', 'description': '暗黑风格护眼，高端大气', 'icon': '🖤', 'item_type': 'skin', 'price': 100, 'game_id': 2, 'rarity': 'rare', 'skin_config': '{"block_color": "#2C2C2C", "pattern": "dark", "effect": "shadow", "game_name": "2048"}'},
+            {'name': '彩虹2048', 'description': '彩虹渐变风格，绚丽多彩', 'icon': '🌈', 'item_type': 'skin', 'price': 200, 'game_id': 2, 'rarity': 'legendary', 'skin_config': '{"block_color": "#FF0000", "pattern": "rainbow", "effect": "shimmer", "game_name": "2048"}'},
+            
+            # ========== 主题类 ==========
             {'name': '暗黑主题', 'description': '全局暗黑模式主题', 'icon': '🌙', 'item_type': 'theme', 'price': 200, 'game_id': None, 'rarity': 'epic'},
             {'name': '复古主题', 'description': '经典复古像素风格', 'icon': '👾', 'item_type': 'theme', 'price': 180, 'game_id': None, 'rarity': 'rare'},
             {'name': '樱花主题', 'description': '粉色樱花飘落效果', 'icon': '🌸', 'item_type': 'theme', 'price': 250, 'game_id': None, 'rarity': 'legendary'},
@@ -143,10 +175,100 @@ def init_database():
                 event = GameEvent(**ed)
                 db.session.add(event)
 
+        # Create new achievements (achievement.py models)
+        # game_id: None = any game, 1-6 = specific game
+        # 俄罗斯方块 id=4, 2048 id=2
+        new_achievements_data = [
+            # 游戏次数类
+            {'name': '初次游戏', 'description': '第一次玩游戏', 'icon': '🎮', 'category': 'play_count', 'target_value': 1, 'coin_reward': 10, 'game_id': None},
+            {'name': '游戏达人', 'description': '游戏次数达到100', 'icon': '🏆', 'category': 'play_count', 'target_value': 100, 'coin_reward': 100, 'game_id': None},
+            {'name': '游戏大师', 'description': '游戏次数达到500', 'icon': '👑', 'category': 'play_count', 'target_value': 500, 'coin_reward': 200, 'game_id': None},
+            # 连续登录类
+            {'name': '连登3天', 'description': '连续登录3天', 'icon': '🔥', 'category': 'login_streak', 'target_value': 3, 'coin_reward': 30, 'game_id': None},
+            {'name': '连登7天', 'description': '连续登录7天', 'icon': '⭐', 'category': 'login_streak', 'target_value': 7, 'coin_reward': 70, 'game_id': None},
+            {'name': '连登30天', 'description': '连续登录30天', 'icon': '💎', 'category': 'login_streak', 'target_value': 30, 'coin_reward': 300, 'game_id': None},
+            # 达到分数类 - 2048
+            {'name': '2048达人', 'description': '2048达到5000分', 'icon': '🔢', 'category': 'reach_score', 'target_value': 5000, 'coin_reward': 50, 'game_id': 2},
+            {'name': '2048大师', 'description': '2048达到10000分', 'icon': '🌟', 'category': 'reach_score', 'target_value': 10000, 'coin_reward': 100, 'game_id': 2},
+            # 达到分数类 - 俄罗斯方块
+            {'name': '俄罗斯方块新手', 'description': '俄罗斯方块达到5000分', 'icon': '🧱', 'category': 'reach_score', 'target_value': 5000, 'coin_reward': 50, 'game_id': 4},
+            {'name': '俄罗斯大师', 'description': '俄罗斯方块达到10000分', 'icon': '🏅', 'category': 'reach_score', 'target_value': 10000, 'coin_reward': 100, 'game_id': 4},
+            {'name': '俄罗斯之王', 'description': '俄罗斯方块达到50000分', 'icon': '👑', 'category': 'reach_score', 'target_value': 50000, 'coin_reward': 300, 'game_id': 4},
+            # 累计分数类
+            {'name': '积分积累', 'description': '累计分数达到10000', 'icon': '📊', 'category': 'total_score', 'target_value': 10000, 'coin_reward': 100, 'game_id': None},
+            {'name': '积分达人', 'description': '累计分数达到100000', 'icon': '🔥', 'category': 'total_score', 'target_value': 100000, 'coin_reward': 500, 'game_id': None},
+        ]
+
+        for nad in new_achievements_data:
+            ach = NewAchievement.query.filter_by(name=nad['name']).first()
+            if not ach:
+                ach = NewAchievement(**nad)
+                db.session.add(ach)
+
+        # Create lottery (幸运转盘)
+        lottery = Lottery.query.filter_by(name='幸运转盘').first()
+        if not lottery:
+            lottery = Lottery(
+                name='幸运转盘',
+                description='花费金币转动转盘，赢取稀有皮肤、金币奖励！',
+                cost=100,
+                is_active=True
+            )
+            db.session.add(lottery)
+            db.session.commit()
+
+            # Create lottery prizes
+            prizes_data = [
+                {'name': '谢谢参与', 'prize_type': 'none', 'prize_value': 0, 'probability': 0.40, 'stock': -1, 'icon': '😢'},
+                {'name': '50金币', 'prize_type': 'coins', 'prize_value': 50, 'probability': 0.30, 'stock': -1, 'icon': '💰'},
+                {'name': '100金币', 'prize_type': 'coins', 'prize_value': 100, 'probability': 0.15, 'stock': -1, 'icon': '💰💰'},
+                {'name': '稀有皮肤', 'prize_type': 'skin', 'prize_value': 1, 'probability': 0.10, 'stock': 10, 'icon': '🎁'},
+                {'name': '传说皮肤', 'prize_type': 'skin', 'prize_value': 2, 'probability': 0.05, 'stock': 3, 'icon': '👑'},
+            ]
+
+            for pd in prizes_data:
+                prize = LotteryPrize(
+                    lottery_id=lottery.id,
+                    name=pd['name'],
+                    prize_type=pd['prize_type'],
+                    prize_value=pd['prize_value'],
+                    probability=pd['probability'],
+                    stock=pd['stock'],
+                    icon=pd['icon']
+                )
+                db.session.add(prize)
+
+        # Create badges (champion badges)
+        # game_id: None = global, 1-6 = specific game
+        badges_data = [
+            # Global champion badges
+            {'name': '全站周冠军', 'description': '全站上周积分榜冠军', 'icon': '👑', 'badge_type': 'weekly_champion', 'game_id': None, 'valid_days': 7},
+            {'name': '全站月冠军', 'description': '全站上月积分榜冠军', 'icon': '🏆', 'badge_type': 'monthly_champion', 'game_id': None, 'valid_days': 30},
+            # Game-specific champion badges
+            {'name': '贪吃蛇周冠军', 'description': '贪吃蛇上周排行榜冠军', 'icon': '🐍', 'badge_type': 'weekly_champion', 'game_id': 1, 'valid_days': 7},
+            {'name': '贪吃蛇月冠军', 'description': '贪吃蛇上月排行榜冠军', 'icon': '🏅', 'badge_type': 'monthly_champion', 'game_id': 1, 'valid_days': 30},
+            {'name': '2048周冠军', 'description': '2048上周排行榜冠军', 'icon': '🔢', 'badge_type': 'weekly_champion', 'game_id': 2, 'valid_days': 7},
+            {'name': '2048月冠军', 'description': '2048上月排行榜冠军', 'icon': '🎯', 'badge_type': 'monthly_champion', 'game_id': 2, 'valid_days': 30},
+            {'name': '扫雷周冠军', 'description': '扫雷上周排行榜冠军', 'icon': '💣', 'badge_type': 'weekly_champion', 'game_id': 3, 'valid_days': 7},
+            {'name': '扫雷月冠军', 'description': '扫雷上月排行榜冠军', 'icon': '💥', 'badge_type': 'monthly_champion', 'game_id': 3, 'valid_days': 30},
+            {'name': '俄罗斯方块周冠军', 'description': '俄罗斯方块上周排行榜冠军', 'icon': '🧱', 'badge_type': 'weekly_champion', 'game_id': 4, 'valid_days': 7},
+            {'name': '俄罗斯方块月冠军', 'description': '俄罗斯方块上月排行榜冠军', 'icon': '🏰', 'badge_type': 'monthly_champion', 'game_id': 4, 'valid_days': 30},
+            {'name': '记忆翻牌周冠军', 'description': '记忆翻牌上周排行榜冠军', 'icon': '🃏', 'badge_type': 'weekly_champion', 'game_id': 5, 'valid_days': 7},
+            {'name': '记忆翻牌月冠军', 'description': '记忆翻牌上月排行榜冠军', 'icon': '🎴', 'badge_type': 'monthly_champion', 'game_id': 5, 'valid_days': 30},
+            {'name': '打砖块周冠军', 'description': '打砖块上周排行榜冠军', 'icon': '🏓', 'badge_type': 'weekly_champion', 'game_id': 6, 'valid_days': 7},
+            {'name': '打砖块月冠军', 'description': '打砖块上月排行榜冠军', 'icon': '🎱', 'badge_type': 'monthly_champion', 'game_id': 6, 'valid_days': 30},
+        ]
+
+        for bd in badges_data:
+            badge = Badge.query.filter_by(name=bd['name']).first()
+            if not badge:
+                badge = Badge(**bd)
+                db.session.add(badge)
+
         db.session.commit()
         print('数据库初始化完成！')
         print('管理员账号: admin / admin123')
-        print('已添加商城商品、每日挑战和活动数据')
+        print('已添加商城商品、每日挑战、活动数据、成就系统、幸运转盘和徽章系统')
 
 if __name__ == '__main__':
     init_database()

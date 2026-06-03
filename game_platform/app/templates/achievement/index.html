@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}成就{% endblock %}
+
+{% block extra_css %}
+<style>
+.achievement-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.achievement-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.achievement-header h1 {
+    margin: 0 0 10px 0;
+    font-size: 2rem;
+}
+
+.achievement-stats {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-top: 20px;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.category-section {
+    margin-bottom: 30px;
+}
+
+.category-title {
+    font-size: 1.3rem;
+    color: #333;
+    margin-bottom: 15px;
+    padding-left: 10px;
+    border-left: 4px solid #667eea;
+}
+
+.achievement-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.achievement-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.achievement-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+}
+
+.achievement-card.completed {
+    border: 2px solid #4CAF50;
+}
+
+.achievement-card.claimed {
+    background: #f8f8f8;
+}
+
+.achievement-icon {
+    font-size: 3rem;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.achievement-name {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+    text-align: center;
+}
+
+.achievement-desc {
+    font-size: 0.9rem;
+    color: #666;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.progress-bar {
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 4px;
+    transition: width 0.3s;
+}
+
+.progress-text {
+    font-size: 0.85rem;
+    color: #666;
+    text-align: center;
+}
+
+.reward-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #FFD700;
+    color: #333;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.claim-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: opacity 0.2s;
+    margin-top: 10px;
+}
+
+.claim-btn:hover {
+    opacity: 0.9;
+}
+
+.claim-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.completed-badge {
+    display: block;
+    text-align: center;
+    padding: 10px;
+    background: #4CAF50;
+    color: white;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+.empty-category {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+    background: #f8f8f8;
+    border-radius: 12px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="achievement-container">
+    <div class="achievement-header">
+        <h1><i class="fas fa-trophy"></i> 我的成就</h1>
+        <p>完成成就任务，领取丰厚金币奖励！</p>
+        <div class="achievement-stats">
+            <div class="stat-item">
+                <div class="stat-value">{{ total_count }}</div>
+                <div class="stat-label">成就总数</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">{{ completed_count }}</div>
+                <div class="stat-label">已完成</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">{{ claimed_count }}</div>
+                <div class="stat-label">已领取</div>
+            </div>
+        </div>
+    </div>
+
+    {% for cat_key, cat_value in categories.items() %}
+    {% if cat_value.achievements %}
+    <div class="category-section">
+        <h2 class="category-title">{{ cat_value.name }}</h2>
+        <div class="achievement-grid">
+            {% for item in cat_value.achievements %}
+            <div class="achievement-card {% if item.user_achievement and item.user_achievement.is_completed %}completed{% endif %} {% if item.user_achievement and item.user_achievement.claimed_at %}claimed{% endif %}">
+                {% if item.achievement.coin_reward > 0 %}
+                <div class="reward-badge">{{ item.achievement.coin_reward }} 金币</div>
+                {% endif %}
+                
+                <div class="achievement-icon">{{ item.achievement.icon }}</div>
+                <div class="achievement-name">{{ item.achievement.name }}</div>
+                <div class="achievement-desc">{{ item.achievement.description }}</div>
+                
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {% if item.user_achievement %}{{ (item.user_achievement.progress / item.achievement.target_value * 100)|round|int }}{% else %}0{% endif %}%"></div>
+                </div>
+                <div class="progress-text">
+                    {% if item.user_achievement %}
+                        {{ item.user_achievement.progress }} / {{ item.achievement.target_value }}
+                    {% else %}
+                        0 / {{ item.achievement.target_value }}
+                    {% endif %}
+                </div>
+                
+                {% if item.user_achievement and item.user_achievement.claimed_at %}
+                <div class="completed-badge">
+                    <i class="fas fa-check"></i> 已领取
+                </div>
+                {% elif item.user_achievement and item.user_achievement.is_completed %}
+                <button class="claim-btn" onclick="claimReward({{ item.achievement.id }})">
+                    <i class="fas fa-gift"></i> 领取奖励
+                </button>
+                {% else %}
+                <button class="claim-btn" disabled>
+                    <i class="fas fa-lock"></i> 未完成
+                </button>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function claimReward(achievementId) {
+    fetch('/achievement/api/claim', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ achievement_id: achievementId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.code === 200) {
+            alert(data.msg);
+            location.reload();
+        } else {
+            alert(data.msg || '领取失败');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('领取失败，请重试');
+    });
+}
+</script>
+{% endblock %}

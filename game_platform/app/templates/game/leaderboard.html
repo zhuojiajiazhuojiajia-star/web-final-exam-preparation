@@ -7,6 +7,26 @@
             <a href="{{ url_for('main.index') }}" class="btn-back"><i class="fas fa-arrow-left"></i> 返回</a>
             <h2>{{ game.icon }} {{ game.name }} 排行榜</h2>
         </div>
+
+        <div class="leaderboard-tabs">
+            <a href="{{ url_for('game.leaderboard', game_id=game.id, period='all') }}" class="tab-link {% if period == 'all' or not period %}active{% endif %}">
+                <i class="fas fa-trophy"></i> 总榜
+            </a>
+            <a href="{{ url_for('game.leaderboard', game_id=game.id, period='weekly') }}" class="tab-link {% if period == 'weekly' %}active{% endif %}">
+                <i class="fas fa-calendar-week"></i> 周榜
+            </a>
+            <a href="{{ url_for('game.leaderboard', game_id=game.id, period='monthly') }}" class="tab-link {% if period == 'monthly' %}active{% endif %}">
+                <i class="fas fa-calendar-alt"></i> 月榜
+            </a>
+        </div>
+
+        <!-- Current Champion Display -->
+        {% if period != 'all' %}
+        <div class="current-champion" id="champion-info">
+            <div class="loading"><i class="fas fa-spinner fa-spin"></i> 加载冠军信息...</div>
+        </div>
+        {% endif %}
+
         <div class="leaderboard-table-wrapper">
             <table class="leaderboard-table">
                 <thead>
@@ -28,7 +48,10 @@
                             {% elif loop.index == 3 %}<i class="fas fa-crown" style="color:#CD7F32"></i>
                             {% else %}{{ loop.index }}{% endif %}
                         </td>
-                        <td>{{ score.user.nickname or score.user.username }}</td>
+                        <td>
+                            {{ score.user.nickname or score.user.username }}
+                            <span class="user-badges" data-user-id="{{ score.user_id }}" data-game-id="{{ game.id }}"></span>
+                        </td>
                         <td class="score-highlight">{{ score.score }}</td>
                         <td>{{ score.difficulty }}</td>
                         <td>{{ score.duration }}秒</td>
@@ -44,14 +67,131 @@
         {% if scores.pages > 1 %}
         <div class="pagination">
             {% if scores.has_prev %}
-            <a href="{{ url_for('game.leaderboard', game_id=game.id, page=scores.prev_num) }}" class="btn btn-sm">上一页</a>
+            <a href="{{ url_for('game.leaderboard', game_id=game.id, page=scores.prev_num, period=period) }}" class="btn btn-sm">上一页</a>
             {% endif %}
             <span>第 {{ scores.page }} / {{ scores.pages }} 页</span>
             {% if scores.has_next %}
-            <a href="{{ url_for('game.leaderboard', game_id=game.id, page=scores.next_num) }}" class="btn btn-sm">下一页</a>
+            <a href="{{ url_for('game.leaderboard', game_id=game.id, page=scores.next_num, period=period) }}" class="btn btn-sm">下一页</a>
             {% endif %}
         </div>
         {% endif %}
     </div>
 </section>
+
+<style>
+.leaderboard-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.tab-link {
+    padding: 8px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #666;
+    transition: all 0.3s;
+}
+
+.tab-link:hover {
+    background: #e9ecef;
+}
+
+.tab-link.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.current-champion {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border-radius: 16px;
+    padding: 25px;
+    margin-bottom: 20px;
+    text-align: center;
+    color: white;
+}
+
+.current-champion .champion-icon {
+    font-size: 50px;
+    margin-bottom: 10px;
+}
+
+.current-champion .champion-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.current-champion .champion-name {
+    font-size: 24px;
+}
+
+.current-champion .champion-badge {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 5px 15px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 20px;
+    font-size: 14px;
+}
+
+.user-badges {
+    margin-left: 5px;
+}
+
+.badge-mini {
+    font-size: 16px;
+    margin: 0 2px;
+}
+</style>
+
+{% if period != 'all' %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load current champion info
+    fetch('/badge/api/leaderboard?period={{ period }}&game_id={{ game.id }}')
+        .then(res => res.json())
+        .then(data => {
+            const container = document.getElementById('champion-info');
+            if (data.code === 200 && data.data.length > 0) {
+                const champion = data.data[0];
+                container.innerHTML = `
+                    <div class="champion-icon">👑</div>
+                    <div class="champion-title">{{ '本周' if period == 'weekly' else '本月' }}冠军</div>
+                    <div class="champion-name">${champion.username}</div>
+                    <div class="champion-badge">
+                        ${champion.has_champion_badge ? '<span class="badge-mini">🏆</span>' : ''}
+                        ${champion.best_score}分
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="champion-icon">🏆</div>
+                    <div class="champion-title">暂无冠军</div>
+                    <div class="champion-name">成为第一个上榜者吧！</div>
+                `;
+            }
+        });
+
+    // Load user badges for each player
+    document.querySelectorAll('.user-badges').forEach(span => {
+        const userId = span.dataset.userId;
+        const gameId = span.dataset.gameId;
+        fetch(`/badge/api/list`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.code === 200) {
+                    const badges = data.data.filter(b => b.game_id == gameId || b.game_id === null);
+                    badges.forEach(badge => {
+                        span.innerHTML += `<span class="badge-mini" title="${badge.name}">${badge.icon}</span>`;
+                    });
+                }
+            });
+    });
+});
+</script>
+{% endif %}
 {% endblock %}

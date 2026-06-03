@@ -92,90 +92,356 @@
 
             <!-- Right: Achievements & Favorites -->
             <div class="profile-main">
-                <!-- 我的物品 -->
-                {% if items_with_details %}
-                <div class="profile-card">
-                    <h3><i class="fas fa-backpack"></i> 我的物品 ({{ items_with_details|length }})</h3>
-                    <div class="my-items-grid">
-                        {% for item_data in items_with_details %}
-                        {% set item = item_data.item %}
-                        {% set user_item = item_data.user_item %}
-                        <div class="my-item-card {% if user_item.is_equipped %}equipped{% endif %}">
-                            <span class="item-icon">{{ item.icon }}</span>
-                            <span class="item-name">{{ item.name }}</span>
-                            {% if user_item.is_equipped %}
-                            <span class="equipped-tag">使用中</span>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <a href="{{ url_for('shop.my_items') }}" class="btn btn-outline btn-sm" style="margin-top: 10px;">
-                        管理物品 <i class="fas fa-arrow-right"></i>
-                    </a>
+                <!-- 标签页导航 -->
+                <div class="profile-tabs">
+                    <button class="profile-tab active" data-tab="my-skins">
+                        <i class="fas fa-palette"></i> 我的皮肤
+                    </button>
+                    <button class="profile-tab" data-tab="my-items">
+                        <i class="fas fa-backpack"></i> 我的物品
+                    </button>
+                    <button class="profile-tab" data-tab="achievements">
+                        <i class="fas fa-trophy"></i> 成就
+                    </button>
+                    <button class="profile-tab" data-tab="favorites">
+                        <i class="fas fa-heart"></i> 收藏
+                    </button>
+                    <button class="profile-tab" data-tab="scores">
+                        <i class="fas fa-chart-bar"></i> 成绩
+                    </button>
                 </div>
-                {% endif %}
-                
-                <!-- Achievements -->
-                <div class="profile-card">
-                    <h3><i class="fas fa-trophy"></i> 我的成就 ({{ achievements|length }}/{{ all_achievements|length }})</h3>
-                    <div class="achievements-grid">
-                        {% for ach in all_achievements %}
-                        <div class="achievement-card {% if ach.id in achievement_dict %}unlocked{% else %}locked{% endif %}">
-                            <div class="achievement-icon">
-                                {% if ach.id in achievement_dict %}
-                                <i class="fas fa-medal"></i>
-                                {% else %}
-                                <i class="fas fa-lock"></i>
+
+                <!-- 我的皮肤 -->
+                <div class="tab-content active" id="tab-my-skins">
+                    <div class="profile-card">
+                        <h3><i class="fas fa-palette"></i> 我的皮肤</h3>
+                        <div class="my-skins-grid" id="mySkinsGrid">
+                            <p class="loading-text">加载中...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 我的物品 -->
+                <div class="tab-content" id="tab-my-items">
+                    {% if items_with_details %}
+                    <div class="profile-card">
+                        <h3><i class="fas fa-backpack"></i> 我的物品 ({{ items_with_details|length }})</h3>
+                        <div class="my-items-grid">
+                            {% for item_data in items_with_details %}
+                            {% set item = item_data.item %}
+                            {% set user_item = item_data.user_item %}
+                            <div class="my-item-card {% if user_item.is_equipped %}equipped{% endif %}">
+                                <span class="item-icon">{{ item.icon }}</span>
+                                <span class="item-name">{{ item.name }}</span>
+                                {% if user_item.is_equipped %}
+                                <span class="equipped-tag">使用中</span>
                                 {% endif %}
                             </div>
-                            <h4>{{ ach.name }}</h4>
-                            <p>{{ ach.description }}</p>
-                            {% if ach.id in achievement_dict %}
-                            <span class="achievement-points">+{{ ach.points }}积分</span>
-                            {% endif %}
+                            {% endfor %}
                         </div>
-                        {% endfor %}
+                        <a href="{{ url_for('shop.my_items') }}" class="btn btn-outline btn-sm" style="margin-top: 10px;">
+                            管理物品 <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="profile-card">
+                        <h3><i class="fas fa-backpack"></i> 我的物品</h3>
+                        <p class="empty-text">还没有任何物品，快去<a href="{{ url_for('shop.index') }}">商城</a>购买吧！</p>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- 成就 -->
+                <div class="tab-content" id="tab-achievements">
+                    <div class="profile-card">
+                        <h3><i class="fas fa-trophy"></i> 我的成就 ({{ achievements|length }}/{{ all_achievements|length }})</h3>
+                        <div class="achievements-grid">
+                            {% for ach in all_achievements %}
+                            <div class="achievement-card {% if ach.id in achievement_dict %}unlocked{% else %}locked{% endif %}">
+                                <div class="achievement-icon">
+                                    {% if ach.id in achievement_dict %}
+                                    <i class="fas fa-medal"></i>
+                                    {% else %}
+                                    <i class="fas fa-lock"></i>
+                                    {% endif %}
+                                </div>
+                                <h4>{{ ach.name }}</h4>
+                                <p>{{ ach.description }}</p>
+                                {% if ach.id in achievement_dict %}
+                                <span class="achievement-points">+{{ ach.points }}积分</span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
 
-                <!-- Favorites -->
-                <div class="profile-card">
-                    <h3><i class="fas fa-heart"></i> 我的收藏</h3>
-                    {% if favorites %}
-                    <div class="favorites-list">
-                        {% for fav in favorites %}
-                        <div class="fav-item">
-                            <span class="fav-icon">{{ fav.game.icon }}</span>
-                            <span class="fav-name">{{ fav.game.name }}</span>
-                            <a href="{{ url_for('game.play', game_id=fav.game_id) }}" class="btn btn-sm">去玩</a>
+                <!-- 收藏 -->
+                <div class="tab-content" id="tab-favorites">
+                    <div class="profile-card">
+                        <h3><i class="fas fa-heart"></i> 我的收藏</h3>
+                        {% if favorites %}
+                        <div class="favorites-list">
+                            {% for fav in favorites %}
+                            <div class="fav-item">
+                                <span class="fav-icon">{{ fav.game.icon }}</span>
+                                <span class="fav-name">{{ fav.game.name }}</span>
+                                <a href="{{ url_for('game.play', game_id=fav.game_id) }}" class="btn btn-sm">去玩</a>
+                            </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
+                        {% else %}
+                        <p class="empty-text">还没有收藏任何游戏，去<a href="{{ url_for('main.index') }}#games">游戏大厅</a>看看吧！</p>
+                        {% endif %}
                     </div>
-                    {% else %}
-                    <p class="empty-text">还没有收藏任何游戏，去<a href="{{ url_for('main.index') }}#games">游戏大厅</a>看看吧！</p>
-                    {% endif %}
                 </div>
 
-                <!-- Best Scores -->
-                <div class="profile-card">
-                    <h3><i class="fas fa-chart-bar"></i> 最佳成绩</h3>
-                    {% if best_scores %}
-                    <div class="scores-list">
-                        {% for bs in best_scores %}
-                        <div class="score-item">
-                            <span class="score-game">{{ bs.game_id }}号游戏</span>
-                            <span class="score-value">最高 {{ bs.best_score }} 分</span>
+                <!-- 最佳成绩 -->
+                <div class="tab-content" id="tab-scores">
+                    <div class="profile-card">
+                        <h3><i class="fas fa-chart-bar"></i> 最佳成绩</h3>
+                        {% if best_scores %}
+                        <div class="scores-list">
+                            {% for bs in best_scores %}
+                            <div class="score-item">
+                                <span class="score-game">{{ bs.game_id }}号游戏</span>
+                                <span class="score-value">最高 {{ bs.best_score }} 分</span>
+                            </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
+                        {% else %}
+                        <p class="empty-text">还没有游戏记录，快去玩一局吧！</p>
+                        {% endif %}
                     </div>
-                    {% else %}
-                    <p class="empty-text">还没有游戏记录，快去玩一局吧！</p>
-                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 </section>
+
+<style>
+.profile-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    border-bottom: 2px solid var(--gray-200);
+    padding-bottom: 10px;
+}
+
+.profile-tab {
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--gray-600);
+}
+
+.profile-tab:hover {
+    color: var(--primary);
+    background: var(--gray-100);
+}
+
+.profile-tab.active {
+    color: var(--primary);
+    background: linear-gradient(135deg, #f0fff4, #c6f6d5);
+    border-bottom: 2px solid var(--primary);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.my-skins-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 15px;
+}
+
+.my-skin-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px;
+    background: var(--gray-100);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    position: relative;
+    transition: var(--transition);
+    border: 2px solid transparent;
+}
+
+.my-skin-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow);
+}
+
+.my-skin-card.equipped {
+    background: linear-gradient(135deg, #f0fff4, #c6f6d5);
+    border-color: var(--success);
+}
+
+.my-skin-preview {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.my-skin-name {
+    font-size: 0.85rem;
+    color: var(--gray-700);
+    margin-bottom: 5px;
+}
+
+.my-skin-game {
+    font-size: 0.7rem;
+    color: var(--gray-500);
+}
+
+.equipped-tag {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 0.65rem;
+    background: var(--success);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+}
+
+.skin-action-btn {
+    margin-top: 8px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    border-radius: 15px;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.skin-action-btn.equip {
+    background: var(--primary);
+    color: white;
+}
+
+.skin-action-btn.unequip {
+    background: var(--gray-400);
+    color: white;
+}
+
+.skin-action-btn:hover {
+    opacity: 0.8;
+}
+
+.loading-text {
+    color: var(--gray-500);
+    text-align: center;
+    padding: 20px;
+}
+
+.empty-text {
+    color: var(--gray-500);
+    padding: 20px;
+    text-align: center;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initTabs();
+    loadMySkins();
+});
+
+function initTabs() {
+    document.querySelectorAll('.profile-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            this.classList.add('active');
+            const tabId = 'tab-' + this.dataset.tab;
+            document.getElementById(tabId).classList.add('active');
+        });
+    });
+}
+
+function loadMySkins() {
+    fetch('/shop/api/my-skins')
+        .then(response => response.json())
+        .then(data => {
+            if (data.code === 200) {
+                renderMySkins(data.skins);
+            }
+        })
+        .catch(error => {
+            document.getElementById('mySkinsGrid').innerHTML = '<p class="loading-text">加载失败</p>';
+        });
+}
+
+function renderMySkins(skins) {
+    const grid = document.getElementById('mySkinsGrid');
+    
+    if (skins.length === 0) {
+        grid.innerHTML = '<p class="empty-text">还没有任何皮肤，快去<a href="{{ url_for(\'shop.skin_preview\') }}">皮肤商城</a>购买吧！</p>';
+        return;
+    }
+    
+    grid.innerHTML = skins.map(skin => {
+        const previewStyle = skin.skin_config && skin.skin_config.block_color 
+            ? `background-color: ${skin.skin_config.block_color}30; border: 2px solid ${skin.skin_config.block_color};` 
+            : 'background: var(--gray-200);';
+        
+        return `
+            <div class="my-skin-card ${skin.is_equipped ? 'equipped' : ''}">
+                ${skin.is_equipped ? '<span class="equipped-tag">已装备</span>' : ''}
+                <div class="my-skin-preview" style="${previewStyle}">
+                    ${skin.icon}
+                </div>
+                <span class="my-skin-name">${skin.name}</span>
+                <span class="my-skin-game">${skin.skin_config && skin.skin_config.game_name ? skin.skin_config.game_name : '通用'}</span>
+                <button class="skin-action-btn ${skin.is_equipped ? 'unequip' : 'equip'}" onclick="toggleEquip(${skin.id}, ${skin.is_equipped})">
+                    ${skin.is_equipped ? '卸下' : '装备'}
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+function toggleEquip(skinId, isEquipped) {
+    fetch(`/shop/equip/${skinId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.code === 200) {
+            loadMySkins();
+        } else {
+            alert(data.msg);
+        }
+    })
+    .catch(error => {
+        alert('操作失败，请重试');
+    });
+}
+</script>
 
 <style>
 .currency-display {

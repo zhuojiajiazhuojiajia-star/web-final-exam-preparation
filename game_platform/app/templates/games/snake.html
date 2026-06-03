@@ -1,7 +1,23 @@
 {% extends "game/game_base.html" %}
 {% block title %}贪吃蛇{% endblock %}
 {% block game_content %}
-<canvas id="snakeCanvas" width="400" height="400" style="background:#fff;border-radius:8px;"></canvas>
+<div id="multiplayerMode" style="display:none;">
+    <div style="display:flex;gap:15px;justify-content:center;align-items:flex-start;">
+        <div class="player-board">
+            <h4 id="player1Header" style="text-align:center;color:#667eea;margin:0 0 10px 0;">玩家1</h4>
+            <canvas id="snakeCanvasP1" width="400" height="400" style="background:#fff;border-radius:8px;border:2px solid #667eea;"></canvas>
+            <div id="score1" style="text-align:center;margin-top:10px;color:#667eea;font-size:1.5rem;font-weight:bold;">0</div>
+        </div>
+        <div class="player-board">
+            <h4 id="player2Header" style="text-align:center;color:#48bb78;margin:0 0 10px 0;">玩家2</h4>
+            <canvas id="snakeCanvasP2" width="400" height="400" style="background:#fff;border-radius:8px;border:2px solid #48bb78;"></canvas>
+            <div id="score2" style="text-align:center;margin-top:10px;color:#48bb78;font-size:1.5rem;font-weight:bold;">0</div>
+        </div>
+    </div>
+</div>
+<div id="singleplayerMode">
+    <canvas id="snakeCanvas" width="400" height="400" style="background:#fff;border-radius:8px;"></canvas>
+</div>
 {% endblock %}
 {% block touch_controls %}
 <div class="touch-controls">
@@ -18,15 +34,31 @@
 {% block game_js %}
 <script>
 const canvas = document.getElementById('snakeCanvas');
-const ctx = canvas.getContext('2d');
+const ctx = canvas ? canvas.getContext('2d') : null;
 const GRID = 20;
-const COLS = 20;  // 400/20
+const COLS = 20;
 const ROWS = 20;
 
+// Multiplayer mode
+let isMultiplayer = false;
+let roomId = null;
+let currentPlayer = 1;
+let pollInterval = null;
+
+// Canvas for multiplayer
+let canvasP1 = document.getElementById('snakeCanvasP1');
+let canvasP2 = document.getElementById('snakeCanvasP2');
+let ctxP1 = canvasP1 ? canvasP1.getContext('2d') : null;
+let ctxP2 = canvasP2 ? canvasP2.getContext('2d') : null;
+
+// Single player variables
 let snake, food, dir, nextDir, score, gameLoop, paused, gameOver, scoreSubmitted;
 
+// Multiplayer variables
+let snake1, food1, dir1, nextDir1, score1, gameLoop1, gameOver1, scoreSubmitted1;
+let snake2, food2, dir2, nextDir2, score2, gameLoop2, gameOver2, scoreSubmitted2;
+
 function initGame() {
-    // 蛇从左侧中间开始，向右移动
     snake = [{x: 5, y: 10}, {x: 4, y: 10}, {x: 3, y: 10}];
     dir = {x: 1, y: 0};
     nextDir = {x: 1, y: 0};
@@ -36,7 +68,7 @@ function initGame() {
     scoreSubmitted = false;
     spawnFood();
     updateScore(0);
-    draw();
+    if (ctx) draw();
 }
 
 function spawnFood() {
@@ -53,10 +85,10 @@ function spawnFood() {
 }
 
 function draw() {
+    if (!ctx) return;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // 网格线
     ctx.strokeStyle = 'rgba(255,255,255,0.03)';
     ctx.lineWidth = 0.5;
     for (let i = 0; i <= COLS; i++) {
@@ -72,7 +104,6 @@ function draw() {
         ctx.stroke();
     }
     
-    // 食物
     ctx.fillStyle = '#ff6b6b';
     ctx.shadowColor = '#ff6b6b';
     ctx.shadowBlur = 10;
@@ -81,7 +112,6 @@ function draw() {
     ctx.fill();
     ctx.shadowBlur = 0;
     
-    // 蛇身
     snake.forEach((seg, i) => {
         const gradient = ctx.createLinearGradient(
             seg.x * GRID, seg.y * GRID,
@@ -98,7 +128,6 @@ function draw() {
         ctx.shadowColor = '#48bb78';
         ctx.shadowBlur = i === 0 ? 8 : 0;
         
-        // 绘制圆角矩形
         const x = seg.x * GRID + 1;
         const y = seg.y * GRID + 1;
         const w = GRID - 2;
@@ -119,24 +148,22 @@ function draw() {
     });
     ctx.shadowBlur = 0;
     
-    // 蛇眼睛
     if (snake.length > 0) {
         const head = snake[0];
         ctx.fillStyle = 'white';
         const eyeSize = 3;
         let ex1, ey1, ex2, ey2;
         
-        // 根据方向确定眼睛位置
-        if (dir.x === 1) { // 向右
+        if (dir.x === 1) {
             ex1 = head.x*GRID+14; ey1 = head.y*GRID+6; 
             ex2 = head.x*GRID+14; ey2 = head.y*GRID+14; 
-        } else if (dir.x === -1) { // 向左
+        } else if (dir.x === -1) {
             ex1 = head.x*GRID+6; ey1 = head.y*GRID+6; 
             ex2 = head.x*GRID+6; ey2 = head.y*GRID+14; 
-        } else if (dir.y === -1) { // 向上
+        } else if (dir.y === -1) {
             ex1 = head.x*GRID+6; ey1 = head.y*GRID+6; 
             ex2 = head.x*GRID+14; ey2 = head.y*GRID+6; 
-        } else { // 向下
+        } else {
             ex1 = head.x*GRID+6; ey1 = head.y*GRID+14; 
             ex2 = head.x*GRID+14; ey2 = head.y*GRID+14; 
         }
@@ -144,7 +171,6 @@ function draw() {
         ctx.beginPath(); ctx.arc(ex1, ey1, eyeSize, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.arc(ex2, ey2, eyeSize, 0, Math.PI*2); ctx.fill();
         
-        // 瞳孔
         ctx.fillStyle = '#1a1a2e';
         ctx.beginPath(); ctx.arc(ex1, ey1, 1.5, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.arc(ex2, ey2, 1.5, 0, Math.PI*2); ctx.fill();
@@ -154,37 +180,28 @@ function draw() {
 function update() {
     if (paused || gameOver) return;
     
-    // 应用待执行方向
     dir = nextDir;
     
-    // 计算新头部位置
     const head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
     
-    // 检查撞墙 - 关键修复：使用 >= 和 < 判断
     if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) {
-        console.log('撞墙:', head, 'COLS=', COLS, 'ROWS=', ROWS);
         endGame(); 
         return;
     }
     
-    // 检查撞自己 - 关键修复：检查新头部是否与身体任何部分重叠
     for (let i = 0; i < snake.length; i++) {
         if (snake[i].x === head.x && snake[i].y === head.y) {
-            console.log('撞自己:', head, '与第', i, '节重叠');
             endGame(); 
             return;
         }
     }
     
-    // 移动蛇
     snake.unshift(head);
     
-    // 检查吃食物
     if (head.x === food.x && head.y === food.y) {
         score += 10;
         updateScore(score);
         spawnFood();
-        // 加速
         clearInterval(gameLoop);
         const speed = Math.max(60, 150 - score);
         gameLoop = setInterval(update, speed);
@@ -219,25 +236,25 @@ function changeDir(d) {
     const nd = dirs[d];
     if (!nd) return;
     
-    // 关键修复：防止180度转向（使用 nextDir 而不是 dir）
     if (nd.x === -nextDir.x && nd.y === -nextDir.y) {
-        return; // 忽略反向指令
+        return;
     }
     
     nextDir = nd;
 }
 
-// 键盘控制
 document.addEventListener('keydown', e => {
-    const keyMap = {
-        ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
-        w: 'up', s: 'down', a: 'left', d: 'right',
-        W: 'up', S: 'down', A: 'left', D: 'right'
-    };
-    
-    if (keyMap[e.key]) {
-        e.preventDefault();
-        changeDir(keyMap[e.key]);
+    if (!isMultiplayer) {
+        const keyMap = {
+            ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+            w: 'up', s: 'down', a: 'left', d: 'right',
+            W: 'up', S: 'down', A: 'left', D: 'right'
+        };
+        
+        if (keyMap[e.key]) {
+            e.preventDefault();
+            changeDir(keyMap[e.key]);
+        }
     }
 });
 
@@ -263,12 +280,362 @@ function resetGame() {
     if (gameLoop) clearInterval(gameLoop);
     stopTimer();
     gameSeconds = 0;
-    document.getElementById('gameTimer').textContent = '0:00';
+    if (document.getElementById('gameTimer')) document.getElementById('gameTimer').textContent = '0:00';
     initGame();
     gameRunning = false;
 }
 
-// 初始化
+// Multiplayer Functions
+function initMultiplayerMode(p1Id, p2Id, p1Name, p2Name, rId) {
+    isMultiplayer = true;
+    roomId = rId;
+    currentPlayer = 1;
+    
+    document.getElementById('multiplayerMode').style.display = 'block';
+    document.getElementById('singleplayerMode').style.display = 'none';
+    document.getElementById('player1Header').textContent = p1Name;
+    document.getElementById('player2Header').textContent = p2Name;
+    
+    // Initialize player 1
+    snake1 = [{x: 3, y: 10}, {x: 2, y: 10}, {x: 1, y: 10}];
+    dir1 = {x: 1, y: 0};
+    nextDir1 = {x: 1, y: 0};
+    score1 = 0;
+    gameOver1 = false;
+    scoreSubmitted1 = false;
+    spawnFoodMP(1);
+    
+    // Initialize player 2
+    snake2 = [{x: 16, y: 10}, {x: 17, y: 10}, {x: 18, y: 10}];
+    dir2 = {x: -1, y: 0};
+    nextDir2 = {x: -1, y: 0};
+    score2 = 0;
+    gameOver2 = false;
+    scoreSubmitted2 = false;
+    spawnFoodMP(2);
+    
+    updateScoreDisplayMP();
+    drawBoards();
+    
+    pollInterval = setInterval(pollRoom, 2000);
+}
+
+function spawnFoodMP(player) {
+    let attempts = 0;
+    let newFood;
+    let snake = player === 1 ? snake1 : snake2;
+    do {
+        newFood = {
+            x: Math.floor(Math.random() * COLS), 
+            y: Math.floor(Math.random() * ROWS)
+        };
+        attempts++;
+    } while (snake.some(s => s.x === newFood.x && s.y === newFood.y) && attempts < 1000);
+    
+    if (player === 1) food1 = newFood;
+    else food2 = newFood;
+}
+
+function drawSnake(ctx, snake, dir, food) {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i <= COLS; i++) {
+        ctx.beginPath(); 
+        ctx.moveTo(i * GRID, 0); 
+        ctx.lineTo(i * GRID, ctx.canvas.height); 
+        ctx.stroke();
+    }
+    for (let i = 0; i <= ROWS; i++) {
+        ctx.beginPath(); 
+        ctx.moveTo(0, i * GRID); 
+        ctx.lineTo(ctx.canvas.width, i * GRID); 
+        ctx.stroke();
+    }
+    
+    ctx.fillStyle = '#ff6b6b';
+    ctx.shadowColor = '#ff6b6b';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(food.x * GRID + GRID/2, food.y * GRID + GRID/2, GRID/2 - 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    snake.forEach((seg, i) => {
+        const gradient = ctx.createLinearGradient(
+            seg.x * GRID, seg.y * GRID,
+            seg.x * GRID + GRID, seg.y * GRID + GRID
+        );
+        if (i === 0) {
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#5a6fd6');
+        } else {
+            gradient.addColorStop(0, '#818cf8');
+            gradient.addColorStop(1, '#667eea');
+        }
+        ctx.fillStyle = gradient;
+        ctx.shadowColor = '#667eea';
+        ctx.shadowBlur = i === 0 ? 8 : 0;
+        
+        const x = seg.x * GRID + 1;
+        const y = seg.y * GRID + 1;
+        const w = GRID - 2;
+        const h = GRID - 2;
+        const r = 4;
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+        ctx.fill();
+    });
+    ctx.shadowBlur = 0;
+    
+    // Eyes
+    if (snake.length > 0) {
+        const head = snake[0];
+        ctx.fillStyle = 'white';
+        const eyeSize = 3;
+        let ex1, ey1, ex2, ey2;
+        
+        if (dir.x === 1) {
+            ex1 = head.x*GRID+14; ey1 = head.y*GRID+6; 
+            ex2 = head.x*GRID+14; ey2 = head.y*GRID+14; 
+        } else if (dir.x === -1) {
+            ex1 = head.x*GRID+6; ey1 = head.y*GRID+6; 
+            ex2 = head.x*GRID+6; ey2 = head.y*GRID+14; 
+        } else if (dir.y === -1) {
+            ex1 = head.x*GRID+6; ey1 = head.y*GRID+6; 
+            ex2 = head.x*GRID+14; ey2 = head.y*GRID+6; 
+        } else {
+            ex1 = head.x*GRID+6; ey1 = head.y*GRID+14; 
+            ex2 = head.x*GRID+14; ey2 = head.y*GRID+14; 
+        }
+        
+        ctx.beginPath(); ctx.arc(ex1, ey1, eyeSize, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ex2, ey2, eyeSize, 0, Math.PI*2); ctx.fill();
+        
+        ctx.fillStyle = '#1a1a2e';
+        ctx.beginPath(); ctx.arc(ex1, ey1, 1.5, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ex2, ey2, 1.5, 0, Math.PI*2); ctx.fill();
+    }
+}
+
+function drawBoards() {
+    if (!ctxP1 || !ctxP2) return;
+    drawSnake(ctxP1, snake1, dir1, food1);
+    drawSnake(ctxP2, snake2, dir2, food2);
+}
+
+function updateMP(player) {
+    let snake, dir, nextDir, food, gameOver, score, scoreSubmitted;
+    
+    if (player === 1) {
+        snake = snake1; dir = dir1; nextDir = nextDir1; food = food1;
+        gameOver = gameOver1; score = score1; scoreSubmitted = scoreSubmitted1;
+    } else {
+        snake = snake2; dir = dir2; nextDir = nextDir2; food = food2;
+        gameOver = gameOver2; score = score2; scoreSubmitted = scoreSubmitted2;
+    }
+    
+    if (gameOver || paused) return;
+    
+    dir = nextDir;
+    const head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
+    
+    if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) {
+        if (player === 1) gameOver1 = true;
+        else gameOver2 = true;
+        drawBoards();
+        return;
+    }
+    
+    for (let i = 0; i < snake.length; i++) {
+        if (snake[i].x === head.x && snake[i].y === head.y) {
+            if (player === 1) gameOver1 = true;
+            else gameOver2 = true;
+            drawBoards();
+            return;
+        }
+    }
+    
+    snake.unshift(head);
+    
+    if (head.x === food.x && head.y === food.y) {
+        if (player === 1) {
+            score1 += 10;
+        } else {
+            score2 += 10;
+        }
+        updateScoreDisplayMP();
+        spawnFoodMP(player);
+    } else {
+        snake.pop();
+    }
+    
+    drawBoards();
+}
+
+function updateScoreDisplayMP() {
+    document.getElementById('score1').textContent = score1;
+    document.getElementById('score2').textContent = score2;
+    
+    const scoreEl = document.getElementById('currentScore');
+    if (scoreEl) scoreEl.textContent = currentPlayer === 1 ? score1 : score2;
+}
+
+function changeDirMP(d, player) {
+    let dir, nextDir, gameOver;
+    
+    if (player === 1) {
+        dir = dir1; nextDir = nextDir1; gameOver = gameOver1;
+    } else {
+        dir = dir2; nextDir = nextDir2; gameOver = gameOver2;
+    }
+    
+    if (gameOver || paused) return;
+    
+    const dirs = {
+        up: {x:0, y:-1}, 
+        down: {x:0, y:1},
+        left: {x:-1, y:0}, 
+        right: {x:1, y:0}
+    };
+    
+    const nd = dirs[d];
+    if (!nd) return;
+    
+    if (nd.x === -nextDir.x && nd.y === -nextDir.y) {
+        return;
+    }
+    
+    if (player === 1) {
+        nextDir1 = nd;
+    } else {
+        nextDir2 = nd;
+    }
+}
+
+// Multiplayer keyboard controls - Player 1 uses arrows, Player 2 uses WASD
+document.addEventListener('keydown', e => {
+    if (!isMultiplayer) return;
+    
+    const keyMap = {
+        ArrowUp: {dir: 'up', player: 1}, 
+        ArrowDown: {dir: 'down', player: 1},
+        ArrowLeft: {dir: 'left', player: 1}, 
+        ArrowRight: {dir: 'right', player: 1},
+        w: {dir: 'up', player: 2}, 
+        s: {dir: 'down', player: 2},
+        a: {dir: 'left', player: 2}, 
+        d: {dir: 'right', player: 2},
+        W: {dir: 'up', player: 2}, 
+        S: {dir: 'down', player: 2},
+        A: {dir: 'left', player: 2}, 
+        D: {dir: 'right', player: 2}
+    };
+    
+    if (keyMap[e.key]) {
+        e.preventDefault();
+        changeDirMP(keyMap[e.key].dir, keyMap[e.key].player);
+    }
+});
+
+function endMultiplayerGame() {
+    stopTimer();
+    if (pollInterval) clearInterval(pollInterval);
+    
+    let winner, winnerScore;
+    if (gameOver1 && gameOver2) {
+        winner = score1 >= score2 ? 1 : 2;
+    } else if (gameOver1) {
+        winner = 2;
+    } else {
+        winner = 1;
+    }
+    
+    winnerScore = winner === 1 ? score1 : score2;
+    
+    document.getElementById('finalScore').textContent = winnerScore;
+    document.getElementById('gameOverMsg').textContent = `玩家${winner}胜利！`;
+    document.getElementById('gameOverOverlay').classList.add('active');
+    
+    if (roomId) {
+        fetch('/multiplayer/api/update-score', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({room_id: roomId, score: currentPlayer === 1 ? score1 : score2})
+        });
+        
+        fetch('/multiplayer/api/end-game', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({room_id: roomId})
+        });
+    }
+}
+
+function pollRoom() {
+    if (!roomId) return;
+    
+    fetch('/multiplayer/api/room/' + roomId)
+        .then(res => res.json())
+        .then(data => {
+            if (data.code === 200) {
+                if (data.data.player1_score !== score1) {
+                    score1 = data.data.player1_score;
+                    updateScoreDisplayMP();
+                }
+                if (data.data.player2_score !== score2) {
+                    score2 = data.data.player2_score;
+                    updateScoreDisplayMP();
+                }
+                
+                if (data.data.status === 'finished') {
+                    endMultiplayerGame();
+                }
+            }
+        });
+}
+
+function startMultiplayerGame(p1Id, p2Id, p1Name, p2Name, rId) {
+    initMultiplayerMode(p1Id, p2Id, p1Name, p2Name, rId);
+    startTimer();
+    
+    const baseSpeed = 150;
+    gameLoop1 = setInterval(() => updateMP(1), baseSpeed);
+    gameLoop2 = setInterval(() => updateMP(2), baseSpeed);
+}
+
+// Check URL params for room
+const urlParams = new URLSearchParams(window.location.search);
+const roomIdParam = urlParams.get('room_id');
+if (roomIdParam) {
+    roomId = roomIdParam;
+    fetch('/multiplayer/api/room/' + roomId)
+        .then(res => res.json())
+        .then(data => {
+            if (data.code === 200) {
+                startMultiplayerGame(
+                    data.data.player1_id, 
+                    data.data.player2_id,
+                    data.data.player1_name,
+                    data.data.player2_name,
+                    roomId
+                );
+            }
+        });
+}
+
+// Initialize single player
 initGame();
 </script>
 {% endblock %}

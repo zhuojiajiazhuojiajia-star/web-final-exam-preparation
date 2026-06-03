@@ -142,10 +142,37 @@ def leaderboard(game_id):
     game = Game.query.get_or_404(game_id)
     page = request.args.get('page', 1, type=int)
     per_page = 20
+    period = request.args.get('period', 'all')
 
-    scores = GameScore.query.filter_by(game_id=game_id).order_by(GameScore.score.desc()).paginate(page=page, per_page=per_page)
+    if period == 'all':
+        scores = GameScore.query.filter_by(game_id=game_id).order_by(GameScore.score.desc()).paginate(page=page, per_page=per_page)
+    else:
+        now = datetime.now()
+        if period == 'weekly':
+            start_date = now - timedelta(days=now.weekday())
+            start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        else:  # monthly
+            start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        # Query scores within the period, ranked by best score per user
+        from sqlalchemy import func
+        subquery = db.session.query(
+            GameScore.user_id,
+            func.max(GameScore.score).label('best_score')
+        ).filter(
+            GameScore.game_id == game_id,
+            GameScore.created_at >= start_date
+        ).group_by(GameScore.user_id).subquery()
+        
+        # Get the full score records for display
+        scores_query = GameScore.query.filter(
+            GameScore.game_id == game_id,
+            GameScore.created_at >= start_date
+        ).order_by(GameScore.score.desc())
+        
+        scores = scores_query.paginate(page=page, per_page=per_page)
 
-    return render_template('game/leaderboard.html', game=game, scores=scores)
+    return render_template('game/leaderboard.html', game=game, scores=scores, period=period)
 
 @game_bp.route('/favorite/<int:game_id>', methods=['POST'])
 @login_required

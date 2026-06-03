@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+{% block title %}徽章中心{% endblock %}
+{% block content %}
+<section class="badge-section">
+    <div class="container">
+        <div class="section-header">
+            <h2><i class="fas fa-medal"></i> 徽章中心</h2>
+        </div>
+
+        <div class="badge-tabs">
+            <button class="tab-btn active" data-tab="my-badges">
+                <i class="fas fa-trophy"></i> 我的徽章
+            </button>
+            <button class="tab-btn" data-tab="shop">
+                <i class="fas fa-store"></i> 徽章商城
+            </button>
+        </div>
+
+        <!-- 我的徽章 -->
+        <div id="my-badges" class="tab-content active">
+            <div class="badge-grid" id="user-badges">
+                <div class="loading"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>
+            </div>
+        </div>
+
+        <!-- 徽章商城 -->
+        <div id="shop" class="tab-content">
+            <div class="badge-grid" id="all-badges">
+                <div class="loading"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.badge-section {
+    padding: 20px 0;
+}
+
+.badge-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+}
+
+.tab-btn {
+    padding: 10px 25px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+    color: #666;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.tab-btn:hover {
+    background: #f0f0f0;
+}
+
+.tab-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.badge-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.badge-card {
+    background: white;
+    border-radius: 16px;
+    padding: 25px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: transform 0.3s, box-shadow 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+
+.badge-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.badge-card.has-badge::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+}
+
+.badge-card.expired {
+    opacity: 0.6;
+}
+
+.badge-icon {
+    font-size: 60px;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.badge-name {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.badge-desc {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.badge-meta {
+    font-size: 12px;
+    color: #999;
+}
+
+.badge-type {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    margin-top: 8px;
+}
+
+.badge-type.weekly_champion {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.badge-type.monthly_champion {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge-type.all_time {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.badge-type.special {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.expires-soon {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.user-badge-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.user-badge-icon {
+    font-size: 40px;
+}
+
+.user-badge-info {
+    flex: 1;
+}
+
+.user-badge-name {
+    font-weight: bold;
+    color: #333;
+}
+
+.user-badge-desc {
+    font-size: 14px;
+    color: #666;
+}
+
+.user-badge-date {
+    font-size: 12px;
+    color: #999;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 50px;
+    color: #999;
+}
+
+.empty-state i {
+    font-size: 60px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.champion-badge {
+    position: relative;
+}
+
+.champion-badge::after {
+    content: '👑';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 20px;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById(this.dataset.tab).classList.add('active');
+        });
+    });
+
+    // Load user badges
+    fetch('/badge/api/list')
+        .then(res => res.json())
+        .then(data => {
+            const container = document.getElementById('user-badges');
+            if (data.code === 200 && data.data.length > 0) {
+                container.innerHTML = data.data.map(badge => `
+                    <div class="badge-card has-badge ${badge.is_expired ? 'expired' : ''}">
+                        <span class="badge-icon">${badge.icon}</span>
+                        <div class="badge-name">${badge.name}</div>
+                        <div class="badge-desc">${badge.description}</div>
+                        <div class="badge-meta">
+                            ${badge.game_name} | ${badge.earned_at}
+                            ${badge.expires_at ? `<br>有效期至: <span class="${isExpiringSoon(badge.expires_at) ? 'expires-soon' : ''}">${badge.expires_at}</span>` : '<br>永久有效'}
+                        </div>
+                        <span class="badge-type ${badge.badge_type}">${getBadgeTypeName(badge.badge_type)}</span>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-medal"></i>
+                        <p>还没有获得任何徽章</p>
+                        <p>快去游戏中心获取吧！</p>
+                    </div>
+                `;
+            }
+        });
+
+    // Load all badges (shop)
+    fetch('/badge/api/all')
+        .then(res => res.json())
+        .then(data => {
+            const container = document.getElementById('all-badges');
+            if (data.code === 200 && data.data.length > 0) {
+                container.innerHTML = data.data.map(badge => `
+                    <div class="badge-card ${badge.user_has ? 'has-badge' : ''}">
+                        <span class="badge-icon">${badge.icon}</span>
+                        <div class="badge-name">${badge.name}</div>
+                        <div class="badge-desc">${badge.description}</div>
+                        <div class="badge-meta">
+                            ${badge.game_name}
+                            ${badge.valid_days > 0 ? `<br>有效期: ${badge.valid_days}天` : '<br>永久有效'}
+                        </div>
+                        ${badge.user_has ? 
+                            '<span style="color:#28a745;margin-top:10px;"><i class="fas fa-check-circle"></i> 已拥有</span>' : 
+                            '<span style="color:#999;margin-top:10px;"><i class="fas fa-lock"></i> 通过排行榜获得</span>'}
+                        <span class="badge-type ${badge.badge_type}">${getBadgeTypeName(badge.badge_type)}</span>
+                    </div>
+                `).join('');
+            }
+        });
+});
+
+function getBadgeTypeName(type) {
+    const names = {
+        'weekly_champion': '周冠军',
+        'monthly_champion': '月冠军',
+        'all_time': '永久荣誉',
+        'special': '特殊徽章'
+    };
+    return names[type] || type;
+}
+
+function isExpiringSoon(expiresAt) {
+    const expires = new Date(expiresAt);
+    const now = new Date();
+    const diffDays = (expires - now) / (1000 * 60 * 60 * 24);
+    return diffDays <= 3;
+}
+</script>
+{% endblock %}

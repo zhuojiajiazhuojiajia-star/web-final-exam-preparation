@@ -1,0 +1,741 @@
+{% extends "base.html" %}
+{% block title %}幸运转盘{% endblock %}
+{% block content %}
+<div class="lottery-section">
+    <div class="container">
+        <div class="lottery-header">
+            <h1><i class="fas fa-circle-notch"></i> 幸运转盘</h1>
+            <p>花费金币转动转盘，赢取稀有皮肤、金币奖励！</p>
+            {% if current_user.is_authenticated %}
+            <div class="coin-display">
+                <i class="fas fa-coins"></i>
+                <span class="coin-amount" id="userCoins">{{ user_coins }}</span>
+                <span class="coin-label">金币</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 转盘区域 -->
+        <div class="lottery-container">
+            <div class="lottery-wheel-wrapper">
+                <div class="lottery-pointer">
+                    <i class="fas fa-caret-down"></i>
+                </div>
+                <div class="lottery-wheel" id="lotteryWheel">
+                    <div class="wheel-inner">
+                        <!-- 奖品切片会通过JS动态生成 -->
+                    </div>
+                </div>
+                <button class="lottery-spin-btn" id="spinBtn" onclick="startDraw()">
+                    <span class="btn-text">抽奖</span>
+                    <span class="btn-cost"><i class="fas fa-coins"></i> <span id="spinCost">100</span></span>
+                </button>
+            </div>
+
+            <div class="lottery-info">
+                <h3><i class="fas fa-info-circle"></i> 抽奖规则</h3>
+                <ul>
+                    <li>每次抽奖消耗 <strong id="lotteryCost">100</strong> 金币</li>
+                    <li>转盘中包含多种奖励，越稀有的奖励概率越低</li>
+                    <li>部分奖品数量有限，抽完即止</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 奖品列表 -->
+        <div class="prizes-section">
+            <h2><i class="fas fa-gift"></i> 奖品一览</h2>
+            <div class="prizes-grid" id="prizesGrid">
+                <!-- 奖品卡片会通过JS动态生成 -->
+            </div>
+        </div>
+
+        <!-- 我的记录 -->
+        {% if current_user.is_authenticated %}
+        <div class="records-section">
+            <h2><i class="fas fa-history"></i> 我的抽奖记录</h2>
+            <div class="records-list" id="recordsList">
+                {% if recent_records %}
+                    {% for record in recent_records %}
+                    <div class="record-item">
+                        <span class="record-icon">{{ record.prize.icon if record.prize else '😢' }}</span>
+                        <span class="record-prize">{{ record.prize.name if record.prize else '谢谢参与' }}</span>
+                        <span class="record-time">{{ record.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="empty-text">暂无抽奖记录</p>
+                {% endif %}
+            </div>
+            <button class="btn btn-outline" onclick="loadMoreRecords()">加载更多</button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 中奖弹窗 -->
+<div class="modal" id="resultModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>抽奖结果</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="result-icon" id="resultIcon">🎉</div>
+            <div class="result-name" id="resultName">恭喜获得</div>
+            <div class="result-detail" id="resultDetail"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="closeModal()">确定</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.lottery-section {
+    padding: 40px 20px;
+    min-height: calc(100vh - 64px - 80px);
+}
+
+.lottery-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.lottery-header h1 {
+    font-size: 2.5rem;
+    color: var(--gray-900);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.lottery-header h1 i {
+    color: var(--warning);
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.lottery-header p {
+    color: var(--gray-600);
+    margin-bottom: 20px;
+}
+
+.coin-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #ffd700, #ffb347);
+    color: #5a4a00;
+    padding: 12px 24px;
+    border-radius: 50px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
+
+.coin-display i {
+    font-size: 1.4rem;
+}
+
+.coin-amount {
+    font-size: 1.5rem;
+}
+
+/* 转盘区域 */
+.lottery-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+    margin-bottom: 50px;
+}
+
+.lottery-wheel-wrapper {
+    position: relative;
+    width: 350px;
+    height: 350px;
+}
+
+.lottery-pointer {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 3rem;
+    color: var(--primary);
+    z-index: 10;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+.lottery-wheel {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 15px;
+    box-shadow: 
+        0 0 0 10px #ffd700,
+        0 0 0 15px #ff6b6b,
+        0 0 30px rgba(0,0,0,0.3);
+}
+
+.wheel-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: white;
+    position: relative;
+    overflow: hidden;
+    transition: transform 4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.wheel-inner.spinning {
+    transition: transform 4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* 转盘切片 */
+.wheel-segment {
+    position: absolute;
+    width: 50%;
+    height: 50%;
+    left: 50%;
+    top: 0;
+    transform-origin: 0% 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.wheel-segment-content {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    padding-left: 20px;
+    transform: rotate(45deg);
+}
+
+.wheel-segment-icon {
+    font-size: 1.8rem;
+    margin-bottom: 2px;
+}
+
+.wheel-segment-name {
+    font-size: 0.7rem;
+    color: #333;
+    font-weight: 500;
+}
+
+.lottery-spin-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+    border: 4px solid #ffd700;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+    z-index: 5;
+}
+
+.lottery-spin-btn:hover:not(:disabled) {
+    transform: translate(-50%, -50%) scale(1.1);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+
+.lottery-spin-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: translate(-50%, -50%) scale(0.95);
+}
+
+.lottery-spin-btn .btn-text {
+    font-size: 1rem;
+}
+
+.lottery-spin-btn .btn-cost {
+    font-size: 0.75rem;
+    opacity: 0.9;
+}
+
+/* 抽奖信息 */
+.lottery-info {
+    background: white;
+    padding: 20px 30px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    max-width: 400px;
+    text-align: center;
+}
+
+.lottery-info h3 {
+    color: var(--gray-800);
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.lottery-info ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    color: var(--gray-600);
+}
+
+.lottery-info li {
+    padding: 5px 0;
+}
+
+.lottery-info strong {
+    color: #f57f17;
+}
+
+/* 奖品列表 */
+.prizes-section {
+    margin-bottom: 40px;
+}
+
+.prizes-section h2 {
+    text-align: center;
+    margin-bottom: 25px;
+    color: var(--gray-800);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.prizes-section h2 i {
+    color: var(--warning);
+}
+
+.prizes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 15px;
+}
+
+.prize-card {
+    background: white;
+    padding: 20px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    text-align: center;
+    transition: var(--transition);
+    border: 2px solid transparent;
+}
+
+.prize-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+}
+
+.prize-card.legendary {
+    border-color: #ffd700;
+    background: linear-gradient(135deg, #fffef0, #fff8e1);
+}
+
+.prize-card.rare {
+    border-color: #4fc3f7;
+}
+
+.prize-card.epic {
+    border-color: #ba68c8;
+}
+
+.prize-icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+}
+
+.prize-name {
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: 5px;
+}
+
+.prize-probability {
+    font-size: 0.85rem;
+    color: var(--gray-500);
+}
+
+.prize-stock {
+    font-size: 0.75rem;
+    color: var(--gray-400);
+    margin-top: 3px;
+}
+
+/* 抽奖记录 */
+.records-section {
+    background: white;
+    padding: 25px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.records-section h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--gray-800);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.records-list {
+    margin-bottom: 15px;
+}
+
+.record-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.record-item:last-child {
+    border-bottom: none;
+}
+
+.record-icon {
+    font-size: 1.5rem;
+}
+
+.record-prize {
+    flex: 1;
+    font-weight: 500;
+    color: var(--gray-700);
+}
+
+.record-time {
+    font-size: 0.85rem;
+    color: var(--gray-500);
+}
+
+/* 弹窗 */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 400px;
+    overflow: hidden;
+    animation: modalPop 0.3s ease;
+}
+
+@keyframes modalPop {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: var(--primary);
+    color: white;
+}
+
+.modal-header h3 {
+    margin: 0;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.modal-body {
+    padding: 30px;
+    text-align: center;
+}
+
+.result-icon {
+    font-size: 5rem;
+    margin-bottom: 15px;
+    animation: bounce 0.5s ease;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+
+.result-name {
+    font-size: 1.2rem;
+    color: var(--gray-600);
+    margin-bottom: 10px;
+}
+
+.result-detail {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    text-align: center;
+    border-top: 1px solid var(--gray-200);
+}
+
+.empty-text {
+    text-align: center;
+    color: var(--gray-500);
+    padding: 20px;
+}
+</style>
+
+<script>
+let prizes = [];
+let lotteryCost = 100;
+let isSpinning = false;
+let currentAngle = 0;
+let currentPage = 1;
+
+$(document).ready(function() {
+    loadLotteryInfo();
+});
+
+function loadLotteryInfo() {
+    fetch('/lottery/api/info')
+        .then(response => response.json())
+        .then(data => {
+            if (data.code === 200) {
+                prizes = data.data.prizes;
+                lotteryCost = data.data.cost;
+                $('#spinCost').text(lotteryCost);
+                $('#lotteryCost').text(lotteryCost);
+                $('#userCoins').text(data.data.user_coins);
+                renderWheel();
+                renderPrizes();
+            }
+        });
+}
+
+function renderWheel() {
+    const wheelInner = $('.wheel-inner');
+    wheelInner.empty();
+
+    const segmentAngle = 360 / prizes.length;
+
+    prizes.forEach((prize, index) => {
+        const angle = index * segmentAngle;
+        const rotateAngle = angle + segmentAngle / 2;
+
+        const segment = $(`
+            <div class="wheel-segment" style="transform: rotate(${angle}deg)">
+                <div class="wheel-segment-content" style="transform: rotate(${rotateAngle}deg)">
+                    <div class="wheel-segment-icon">${prize.icon}</div>
+                    <div class="wheel-segment-name">${prize.name}</div>
+                </div>
+            </div>
+        `);
+
+        // 根据稀有度设置背景色
+        const bgColors = [
+            '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', 
+            '#ffeaa7', '#dfe6e9', '#fd79a8', '#a29bfe'
+        ];
+        segment.css('background', `linear-gradient(${angle}deg, ${bgColors[index % bgColors.length]}50, ${bgColors[(index + 1) % bgColors.length]}50)`);
+        segment.css('border-left', `1px solid ${bgColors[index % bgColors.length]}`);
+
+        wheelInner.append(segment);
+    });
+}
+
+function renderPrizes() {
+    const grid = $('#prizesGrid');
+    grid.empty();
+
+    prizes.forEach(prize => {
+        let rarityClass = '';
+        if (prize.prize_type === 'skin' || prize.name.includes('传说')) {
+            rarityClass = 'legendary';
+        } else if (prize.name.includes('稀有') || prize.probability <= 0.1) {
+            rarityClass = 'rare';
+        } else if (prize.name.includes('史诗')) {
+            rarityClass = 'epic';
+        }
+
+        const stockText = prize.stock === -1 ? '无限库存' : `剩余 ${prize.stock} 件`;
+
+        const card = $(`
+            <div class="prize-card ${rarityClass}">
+                <div class="prize-icon">${prize.icon}</div>
+                <div class="prize-name">${prize.name}</div>
+                <div class="prize-probability">概率: ${(prize.probability * 100).toFixed(1)}%</div>
+                <div class="prize-stock">${stockText}</div>
+            </div>
+        `);
+        grid.append(card);
+    });
+}
+
+function startDraw() {
+    if (isSpinning) return;
+
+    if (!confirm(`确定花费 ${lotteryCost} 金币抽奖吗？`)) {
+        return;
+    }
+
+    isSpinning = true;
+    $('#spinBtn').prop('disabled', true);
+
+    fetch('/lottery/api/draw', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.code === 200) {
+            // 计算转盘需要旋转的角度
+            const prizeIndex = prizes.findIndex(p => p.id === data.prize.id);
+            const segmentAngle = 360 / prizes.length;
+            
+            // 随机多转几圈
+            const extraSpins = 5 + Math.floor(Math.random() * 3);
+            const targetAngle = extraSpins * 360 + (360 - prizeIndex * segmentAngle - segmentAngle / 2);
+
+            // 旋转转盘
+            const wheelInner = $('.wheel-inner');
+            currentAngle += targetAngle;
+            
+            wheelInner.css('transform', `rotate(${currentAngle}deg)`);
+
+            // 延迟显示结果
+            setTimeout(() => {
+                showResult(data);
+                isSpinning = false;
+                $('#spinBtn').prop('disabled', false);
+                $('#userCoins').text(data.user_coins);
+                
+                // 更新页面上的记录
+                if (data.prize) {
+                    const newRecord = $(`
+                        <div class="record-item">
+                            <span class="record-icon">${data.prize.icon}</span>
+                            <span class="record-prize">${data.prize.name}</span>
+                            <span class="record-time">刚刚</span>
+                        </div>
+                    `);
+                    $('#recordsList').prepend(newRecord);
+                }
+            }, 4000);
+        } else {
+            alert(data.msg);
+            isSpinning = false;
+            $('#spinBtn').prop('disabled', false);
+        }
+    })
+    .catch(error => {
+        alert('抽奖失败，请重试');
+        isSpinning = false;
+        $('#spinBtn').prop('disabled', false);
+    });
+}
+
+function showResult(data) {
+    const modal = $('#resultModal');
+    
+    if (data.prize) {
+        $('#resultIcon').text(data.prize.icon);
+        $('#resultName').text('恭喜获得');
+        $('#resultDetail').text(data.prize.name);
+        
+        if (data.prize.coins_added) {
+            $('#resultDetail').append(`<br><small>+${data.prize.coins_added} 金币</small>`);
+        }
+    } else {
+        $('#resultIcon').text('😢');
+        $('#resultName').text('很遗憾');
+        $('#resultDetail').text('谢谢参与');
+    }
+
+    modal.addClass('show');
+}
+
+function closeModal() {
+    $('#resultModal').removeClass('show');
+}
+
+function loadMoreRecords() {
+    currentPage++;
+    fetch(`/lottery/api/history?page=${currentPage}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.code === 200 && data.data.records.length > 0) {
+                data.data.records.forEach(record => {
+                    const item = $(`
+                        <div class="record-item">
+                            <span class="record-icon">${record.prize_icon}</span>
+                            <span class="record-prize">${record.prize_name}</span>
+                            <span class="record-time">${record.created_at}</span>
+                        </div>
+                    `);
+                    $('#recordsList').append(item);
+                });
+            } else {
+                alert('没有更多记录了');
+            }
+        });
+}
+
+// 点击弹窗外部关闭
+$('#resultModal').on('click', function(e) {
+    if (e.target === this) {
+        closeModal();
+    }
+});
+</script>
+{% endblock %}
