@@ -200,9 +200,9 @@ def init_database():
         ]
 
         for nad in new_achievements_data:
-            ach = NewAchievement.query.filter_by(name=nad['name']).first()
+            ach = Achievement.query.filter_by(name=nad['name']).first()
             if not ach:
-                ach = NewAchievement(**nad)
+                ach = Achievement(**nad)
                 db.session.add(ach)
 
         # Create lottery (幸运转盘)
