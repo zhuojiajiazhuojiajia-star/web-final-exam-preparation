@@ -1,0 +1,201 @@
+{% extends "game/game_base.html" %}
+{% block title %}记忆翻牌{% endblock %}
+{% block game_content %}
+<div style="text-align:center;">
+    <div style="margin-bottom:10px;display:flex;justify-content:center;gap:10px;align-items:center;">
+        <label>难度：</label>
+        <select id="memDifficulty" onchange="changeDifficulty()" style="padding:6px 12px;border-radius:6px;border:1px solid #ccc;">
+            <option value="easy">简单 (4×3)</option>
+            <option value="normal" selected>普通 (4×4)</option>
+            <option value="hard">困难 (5×4)</option>
+        </select>
+        <span id="moveCount" style="font-weight:bold;color:#667eea;">步数: 0</span>
+    </div>
+    <div id="memoryBoard" style="display:inline-grid;gap:8px;justify-content:center;"></div>
+</div>
+<style>
+.mem-card {
+    perspective: 600px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    pointer-events: auto;
+}
+.mem-card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.5s;
+    transform-style: preserve-3d;
+}
+.mem-card.flipped .mem-card-inner,
+.mem-card.matched .mem-card-inner {
+    transform: rotateY(180deg);
+}
+.mem-card-front, .mem-card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.mem-card-front {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    font-size: 1.5rem;
+}
+.mem-card-back {
+    background: white;
+    transform: rotateY(180deg);
+    font-size: 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.mem-card.matched .mem-card-back {
+    background: linear-gradient(135deg, #c6f6d5, #9ae6b4);
+}
+/* 修复：锁定状态下禁用点击 */
+.mem-card.disabled {
+    pointer-events: none;
+}
+</style>
+{% endblock %}
+{% block game_js %}
+<script>
+const EMOJIS = ['🎮','🎲','🎯','🎪','🎨','🎭','🎵','🎸','🏆','🌟','⭐','🔥','💎','🚀','🌈'];
+const DIFFS = {
+    easy: {cols:4, rows:3, pairs:6},
+    normal: {cols:4, rows:4, pairs:8},
+    hard: {cols:5, rows:4, pairs:10}
+};
+
+let cards, flippedCards, matchedPairs, moves, gameActive, lockBoard, isChecking;
+
+function initMemory() {
+    const diff = document.getElementById('memDifficulty').value;
+    const d = DIFFS[diff];
+    const selected = EMOJIS.slice(0, d.pairs);
+    const deck = [...selected, ...selected].sort(() => Math.random() - 0.5);
+    
+    cards = deck;
+    flippedCards = [];
+    matchedPairs = 0;
+    moves = 0;
+    gameActive = true;
+    lockBoard = false;
+    isChecking = false;  // 修复：添加检查状态防止竞态
+    
+    document.getElementById('moveCount').textContent = `步数: 0`;
+    
+    const board = document.getElementById('memoryBoard');
+    const cardSize = diff === 'hard' ? 70 : 80;
+    board.style.gridTemplateColumns = `repeat(${d.cols}, ${cardSize}px)`;
+    board.innerHTML = '';
+    
+    deck.forEach((emoji, i) => {
+        const card = document.createElement('div');
+        card.className = 'mem-card';
+        card.style.width = cardSize + 'px';
+        card.style.height = cardSize + 'px';
+        card.dataset.index = i;
+        card.dataset.emoji = emoji;
+        card.innerHTML = `
+            <div class="mem-card-inner">
+                <div class="mem-card-front">?</div>
+                <div class="mem-card-back">${emoji}</div>
+            </div>
+        `;
+        card.addEventListener('click', () => flipCard(card));
+        board.appendChild(card);
+    });
+    
+    updateScore(0);
+}
+
+// 修复：分离难度切换，确保计时器正确停止
+function changeDifficulty() {
+    stopTimer();
+    gameSeconds = 0;
+    document.getElementById('gameTimer').textContent = '0:00';
+    initMemory();
+}
+
+function flipCard(card) {
+    // 修复：多重检查防止非法操作
+    if (!gameActive || lockBoard || isChecking) return;
+    if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+    // 修复：防止同一张牌被添加两次
+    if (flippedCards.includes(card)) return;
+    
+    card.classList.add('flipped');
+    flippedCards.push(card);
+    
+    if (flippedCards.length === 2) {
+        moves++;
+        document.getElementById('moveCount').textContent = `步数: ${moves}`;
+        isChecking = true;  // 修复：开始检查，锁定操作
+        lockBoard = true;   // 同时锁定整个板
+        
+        const [c1, c2] = flippedCards;
+        
+        if (c1.dataset.emoji === c2.dataset.emoji) {
+            // 匹配成功
+            c1.classList.add('matched');
+            c2.classList.add('matched');
+            matchedPairs++;
+            flippedCards = [];
+            isChecking = false;
+            lockBoard = false;
+            
+            const diff = document.getElementById('memDifficulty').value;
+            const totalPairs = DIFFS[diff].pairs;
+            
+            if (matchedPairs === totalPairs) {
+                gameActive = false;
+                stopTimer();
+                const sc = matchedPairs * 100 - (moves - matchedPairs) * 10;
+                const finalScore = Math.max(0, sc);
+                updateScore(finalScore);
+                showGameOver(finalScore);
+            }
+        } else {
+            // 不匹配，延迟翻回
+            // 修复：添加 disabled 类防止动画期间点击
+            c1.classList.add('disabled');
+            c2.classList.add('disabled');
+            
+            setTimeout(() => {
+                c1.classList.remove('flipped', 'disabled');
+                c2.classList.remove('flipped', 'disabled');
+                flippedCards = [];
+                isChecking = false;
+                lockBoard = false;
+            }, 800);
+        }
+    }
+}
+
+function startGame() {
+    stopTimer();
+    gameSeconds = 0;
+    document.getElementById('gameTimer').textContent = '0:00';
+    initMemory();
+    startTimer();
+    gameRunning = true;
+}
+
+function pauseGame() { /* Memory is turn-based */ }
+
+function resetGame() {
+    stopTimer();
+    gameSeconds = 0;
+    document.getElementById('gameTimer').textContent = '0:00';
+    initMemory();
+    gameRunning = false;
+}
+
+initMemory();
+</script>
+{% endblock %}

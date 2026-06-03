@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}游戏乐园{% endblock %} - 休闲小游戏平台</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ url_for('main.index') }}" class="nav-logo">
+                <i class="fas fa-gamepad"></i> 游戏乐园
+            </a>
+            <button class="nav-toggle" onclick="toggleNav()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <ul class="nav-menu" id="navMenu">
+                <li><a href="{{ url_for('main.index') }}" class="nav-link"><i class="fas fa-home"></i> 首页</a></li>
+                <li><a href="{{ url_for('main.index') }}#games" class="nav-link"><i class="fas fa-dice"></i> 游戏大厅</a></li>
+                <li><a href="{{ url_for('game.history') }}" class="nav-link"><i class="fas fa-trophy"></i> 我的记录</a></li>
+                {% if current_user.is_authenticated %}
+                <li><a href="{{ url_for('user.profile') }}" class="nav-link"><i class="fas fa-user"></i> {{ current_user.nickname or current_user.username }}</a></li>
+                {% if current_user.is_admin %}
+                <li><a href="{{ url_for('admin.dashboard') }}" class="nav-link"><i class="fas fa-cog"></i> 管理</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('auth.logout') }}" class="nav-link"><i class="fas fa-sign-out-alt"></i> 退出</a></li>
+                {% else %}
+                <li><a href="{{ url_for('auth.login') }}" class="nav-link"><i class="fas fa-sign-in-alt"></i> 登录</a></li>
+                <li><a href="{{ url_for('auth.register') }}" class="nav-link btn-register"><i class="fas fa-user-plus"></i> 注册</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container">
+        {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">
+            <span>{{ message }}</span>
+            <button onclick="this.parentElement.remove()" class="flash-close">&times;</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 游戏乐园 - 休闲小游戏平台 | 期末综合训练项目</p>
+        </div>
+    </footer>
+
+    <script>
+    function toggleNav() {
+        document.getElementById('navMenu').classList.toggle('active');
+    }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}管理后台{% endblock %}
+{% block content %}
+<section class="admin-section">
+    <div class="container">
+        <h2 class="section-title"><i class="fas fa-tachometer-alt"></i> 管理后台</h2>
+        <div class="stats-grid">
+            <div class="stat-card admin-stat">
+                <i class="fas fa-users"></i>
+                <h3>{{ stats.total_users }}</h3>
+                <p>注册用户</p>
+            </div>
+            <div class="stat-card admin-stat">
+                <i class="fas fa-gamepad"></i>
+                <h3>{{ stats.total_games }}</h3>
+                <p>游戏数量</p>
+            </div>
+            <div class="stat-card admin-stat">
+                <i class="fas fa-play"></i>
+                <h3>{{ stats.total_games_played }}</h3>
+                <p>游戏总次数</p>
+            </div>
+        </div>
+        <div class="admin-grid">
+            <div class="profile-card">
+                <h3><i class="fas fa-user-clock"></i> 最新注册用户</h3>
+                <div class="admin-list">
+                    {% for u in recent_users %}
+                    <div class="admin-list-item">
+                        <span>{{ u.username }} ({{ u.nickname or '-' }})</span>
+                        <span>{{ u.created_at.strftime('%m-%d %H:%M') }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="profile-card">
+                <h3><i class="fas fa-chart-line"></i> 最新游戏记录</h3>
+                <div class="admin-list">
+                    {% for s in recent_scores %}
+                    <div class="admin-list-item">
+                        <span>{{ s.user.username }} - {{ s.game.name }}</span>
+                        <span>{{ s.score }}分</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ game.name }}排行榜{% endblock %}
+{% block content %}
+<section class="leaderboard-section">
+    <div class="container">
+        <div class="section-header">
+            <a href="{{ url_for('main.index') }}" class="btn-back"><i class="fas fa-arrow-left"></i> 返回</a>
+            <h2>{{ game.icon }} {{ game.name }} 排行榜</h2>
+        </div>
+        <div class="leaderboard-table-wrapper">
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>排名</th>
+                        <th>玩家</th>
+                        <th>分数</th>
+                        <th>难度</th>
+                        <th>用时</th>
+                        <th>时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for score in scores.items %}
+                    <tr class="{% if loop.index <= 3 %}top-three{% endif %}">
+                        <td>
+                            {% if loop.index == 1 %}<i class="fas fa-crown" style="color:#FFD700"></i>
+                            {% elif loop.index == 2 %}<i class="fas fa-crown" style="color:#C0C0C0"></i>
+                            {% elif loop.index == 3 %}<i class="fas fa-crown" style="color:#CD7F32"></i>
+                            {% else %}{{ loop.index }}{% endif %}
+                        </td>
+                        <td>{{ score.user.nickname or score.user.username }}</td>
+                        <td class="score-highlight">{{ score.score }}</td>
+                        <td>{{ score.difficulty }}</td>
+                        <td>{{ score.duration }}秒</td>
+                        <td>{{ score.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="empty-text">暂无记录</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <!-- Pagination -->
+        {% if scores.pages > 1 %}
+        <div class="pagination">
+            {% if scores.has_prev %}
+            <a href="{{ url_for('game.leaderboard', game_id=game.id, page=scores.prev_num) }}" class="btn btn-sm">上一页</a>
+            {% endif %}
+            <span>第 {{ scores.page }} / {{ scores.pages }} 页</span>
+            {% if scores.has_next %}
+            <a href="{{ url_for('game.leaderboard', game_id=game.id, page=scores.next_num) }}" class="btn btn-sm">下一页</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}游戏记录{% endblock %}
+{% block content %}
+<section class="history-section">
+    <div class="container">
+        <div class="section-header">
+            <h2><i class="fas fa-history"></i> 我的游戏记录</h2>
+        </div>
+        <div class="history-list">
+            {% for score in scores.items %}
+            <div class="history-item">
+                <div class="history-icon">{{ score.game.icon }}</div>
+                <div class="history-info">
+                    <h4>{{ score.game.name }}</h4>
+                    <p>难度: {{ score.difficulty }} | 用时: {{ score.duration }}秒</p>
+                </div>
+                <div class="history-score">{{ score.score }}分</div>
+                <div class="history-time">{{ score.created_at.strftime('%m-%d %H:%M') }}</div>
+            </div>
+            {% else %}
+            <p class="empty-text">还没有游戏记录，快去<a href="{{ url_for('main.index') }}#games">玩一局</a>吧！</p>
+            {% endfor %}
+        </div>
+        {% if scores.pages > 1 %}
+        <div class="pagination">
+            {% if scores.has_prev %}
+            <a href="{{ url_for('game.history', page=scores.prev_num) }}" class="btn btn-sm">上一页</a>
+            {% endif %}
+            <span>第 {{ scores.page }} / {{ scores.pages }} 页</span>
+            {% if scores.has_next %}
+            <a href="{{ url_for('game.history', page=scores.next_num) }}" class="btn btn-sm">下一页</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}用户管理{% endblock %}
+{% block content %}
+<section class="admin-section">
+    <div class="container">
+        <h2 class="section-title"><i class="fas fa-users-cog"></i> 用户管理</h2>
+        <div class="leaderboard-table-wrapper">
+            <table class="leaderboard-table">
+                <thead>
+                    <tr><th>ID</th><th>用户名</th><th>昵称</th><th>邮箱</th><th>游戏次数</th><th>总积分</th><th>注册时间</th></tr>
+                </thead>
+                <tbody>
+                    {% for u in users.items %}
+                    <tr>
+                        <td>{{ u.id }}</td>
+                        <td>{{ u.username }}</td>
+                        <td>{{ u.nickname or '-' }}</td>
+                        <td>{{ u.email }}</td>
+                        <td>{{ u.games_played }}</td>
+                        <td>{{ u.total_score }}</td>
+                        <td>{{ u.created_at.strftime('%Y-%m-%d') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if users.pages > 1 %}
+        <div class="pagination">
+            {% if users.has_prev %}<a href="?page={{ users.prev_num }}" class="btn btn-sm">上一页</a>{% endif %}
+            <span>第 {{ users.page }} / {{ users.pages }} 页</span>
+            {% if users.has_next %}<a href="?page={{ users.next_num }}" class="btn btn-sm">下一页</a>{% endif %}
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

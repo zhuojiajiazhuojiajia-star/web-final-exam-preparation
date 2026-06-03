@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}注册{% endblock %}
+{% block content %}
+<section class="auth-section">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h2><i class="fas fa-user-plus"></i> 注册</h2>
+            <p>创建您的游戏账号</p>
+        </div>
+        <form id="registerForm" class="auth-form" onsubmit="handleRegister(event)">
+            <div class="form-group">
+                <label for="username"><i class="fas fa-user"></i> 用户名</label>
+                <input type="text" id="username" name="username" required placeholder="请输入用户名" minlength="3" maxlength="20">
+            </div>
+            <div class="form-group">
+                <label for="email"><i class="fas fa-envelope"></i> 邮箱</label>
+                <input type="email" id="email" name="email" required placeholder="请输入邮箱">
+            </div>
+            <div class="form-group">
+                <label for="nickname"><i class="fas fa-id-badge"></i> 昵称</label>
+                <input type="text" id="nickname" name="nickname" placeholder="选填，默认与用户名相同">
+            </div>
+            <div class="form-group">
+                <label for="password"><i class="fas fa-lock"></i> 密码</label>
+                <input type="password" id="password" name="password" required placeholder="请输入密码（至少6位）" minlength="6">
+            </div>
+            <div class="form-group">
+                <label for="confirm_password"><i class="fas fa-lock"></i> 确认密码</label>
+                <input type="password" id="confirm_password" name="confirm_password" required placeholder="请再次输入密码">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">注 册</button>
+            <div class="auth-footer">
+                <p>已有账号？<a href="{{ url_for('auth.login') }}">立即登录</a></p>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script>
+async function handleRegister(e) {
+    e.preventDefault();
+    const form = document.getElementById('registerForm');
+    const data = {
+        username: document.getElementById('username').value,
+        email: document.getElementById('email').value,
+        nickname: document.getElementById('nickname').value,
+        password: document.getElementById('password').value,
+        confirm_password: document.getElementById('confirm_password').value
+    };
+
+    try {
+        const res = await fetch('{{ url_for("auth.register") }}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.code === 200) {
+            alert('注册成功！即将跳转到登录页');
+            window.location.href = '{{ url_for("auth.login") }}';
+        } else {
+            alert(result.msg);
+        }
+    } catch(err) {
+        alert('网络错误，请重试');
+    }
+}
+</script>
+{% endblock %}

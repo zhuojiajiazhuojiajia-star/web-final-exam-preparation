@@ -1,0 +1,275 @@
+{% extends "game/game_base.html" %}
+{% block title %}扫雷{% endblock %}
+{% block game_content %}
+<div style="text-align:center;">
+    <div style="margin-bottom:10px;display:flex;justify-content:center;gap:10px;align-items:center;">
+        <label>难度：</label>
+        <select id="difficulty" onchange="changeDifficulty()" style="padding:6px 12px;border-radius:6px;border:1px solid #ccc;">
+            <option value="easy">初级 (9×9)</option>
+            <option value="medium">中级 (16×16)</option>
+            <option value="hard">高级 (16×30)</option>
+        </select>
+        <span id="mineCount" style="font-weight:bold;color:#ff6b6b;">💣 10</span>
+    </div>
+    <div id="minesweeperBoard" style="display:inline-block;background:#bbb;border:3px solid #999;border-radius:4px;padding:2px;"></div>
+</div>
+{% endblock %}
+{% block game_js %}
+<script>
+const DIFFICULTIES = {
+    easy: {rows:9, cols:9, mines:10},
+    medium: {rows:16, cols:16, mines:40},
+    hard: {rows:16, cols:30, mines:99}
+};
+const NUM_COLORS = ['','#3498db','#2ecc71','#e74c3c','#2c3e50','#c0392b','#16a085','#2c3e50','#7f8c8d'];
+
+let board, revealed, flagged, rows, cols, mines, gameActive, firstClick, cellSize;
+
+function initMinesweeper() {
+    const diff = document.getElementById('difficulty').value;
+    const d = DIFFICULTIES[diff];
+    rows = d.rows; cols = d.cols; mines = d.mines;
+    board = Array.from({length:rows}, () => Array(cols).fill(0));
+    revealed = Array.from({length:rows}, () => Array(cols).fill(false));
+    flagged = Array.from({length:rows}, () => Array(cols).fill(false));
+    gameActive = true;
+    firstClick = true;
+    
+    cellSize = diff === 'hard' ? 24 : diff === 'medium' ? 28 : 32;
+    
+    document.getElementById('mineCount').textContent = `💣 ${mines}`;
+    renderBoard();
+    updateScore(0);
+}
+
+// 修复：分离难度切换和重置，确保计时器正确停止
+function changeDifficulty() {
+    stopTimer();
+    gameSeconds = 0;
+    document.getElementById('gameTimer').textContent = '0:00';
+    initMinesweeper();
+}
+
+function placeMines(safeR, safeC) {
+    let placed = 0;
+    let attempts = 0;
+    while (placed < mines && attempts < 10000) {
+        const r = Math.floor(Math.random() * rows);
+        const c = Math.floor(Math.random() * cols);
+        // 修复：边界检查，确保 safeR/safeC 在有效范围内
+        const safeMinR = Math.max(0, safeR - 1);
+        const safeMaxR = Math.min(rows - 1, safeR + 1);
+        const safeMinC = Math.max(0, safeC - 1);
+        const safeMaxC = Math.min(cols - 1, safeC + 1);
+        
+        if (board[r][c] !== -1 && !(r >= safeMinR && r <= safeMaxR && c >= safeMinC && c <= safeMaxC)) {
+            board[r][c] = -1;
+            placed++;
+        }
+        attempts++;
+    }
+    // Calculate numbers
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            if (board[r][c] === -1) continue;
+            let count = 0;
+            for (let dr = -1; dr <= 1; dr++)
+                for (let dc = -1; dc <= 1; dc++) {
+                    const nr = r+dr, nc = c+dc;
+                    if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc] === -1) count++;
+                }
+            board[r][c] = count;
+        }
+    }
+}
+
+function renderBoard() {
+    const container = document.getElementById('minesweeperBoard');
+    container.innerHTML = '';
+    container.style.display = 'grid';
+    container.style.gridTemplateColumns = `repeat(${cols}, ${cellSize}px)`;
+    container.style.gap = '1px';
+    
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const cell = document.createElement('div');
+            cell.style.cssText = `width:${cellSize}px;height:${cellSize}px;display:flex;align-items:center;justify-content:center;
+                font-size:${cellSize > 26 ? 14 : 11}px;font-weight:700;cursor:pointer;user-select:none;
+                border-radius:2px;transition:background 0.1s;`;
+            cell.dataset.r = r;
+            cell.dataset.c = c;
+            
+            updateCellAppearance(cell, r, c);
+            
+            // 修复：分离点击和长按事件
+            addCellEvents(cell, r, c);
+            
+            container.appendChild(cell);
+        }
+    }
+}
+
+function updateCellAppearance(cell, r, c) {
+    if (revealed[r][c]) {
+        if (board[r][c] === -1) {
+            cell.style.background = '#e74c3c';
+            cell.textContent = '💣';
+        } else {
+            cell.style.background = '#ddd';
+            if (board[r][c] > 0) {
+                cell.textContent = board[r][c];
+                cell.style.color = NUM_COLORS[board[r][c]];
+            } else {
+                cell.textContent = '';
+            }
+        }
+    } else if (flagged[r][c]) {
+        cell.style.background = '#c8e6c9';
+        cell.textContent = '🚩';
+    } else {
+        cell.style.background = '#e0e0e0';
+        cell.textContent = '';
+    }
+}
+
+// 修复：使用独立的长按检测，避免与点击冲突
+function addCellEvents(cell, r, c) {
+    let longPressTimer = null;
+    let isLongPress = false;
+    let touchStartTime = 0;
+    
+    // 鼠标左键点击
+    cell.addEventListener('click', (e) => {
+        if (isLongPress) {
+            isLongPress = false;
+            return;
+        }
+        revealCell(r, c);
+    });
+    
+    // 鼠标右键插旗
+    cell.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        toggleFlag(r, c);
+    });
+    
+    // 触摸开始 - 启动长按计时
+    cell.addEventListener('touchstart', (e) => {
+        isLongPress = false;
+        touchStartTime = Date.now();
+        longPressTimer = setTimeout(() => {
+            isLongPress = true;
+            e.preventDefault();
+            toggleFlag(r, c);
+            // 震动反馈（如果支持）
+            if (navigator.vibrate) navigator.vibrate(50);
+        }, 500);
+    }, {passive: true});
+    
+    // 触摸结束 - 如果不是长按则触发点击
+    cell.addEventListener('touchend', (e) => {
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+        const pressDuration = Date.now() - touchStartTime;
+        if (!isLongPress && pressDuration < 500) {
+            // 短按 = 揭开
+            revealCell(r, c);
+        }
+    });
+    
+    // 触摸移动 - 取消长按
+    cell.addEventListener('touchmove', () => {
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+    });
+    
+    // 触摸取消
+    cell.addEventListener('touchcancel', () => {
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+    });
+}
+
+function revealCell(r, c) {
+    if (!gameActive || revealed[r][c] || flagged[r][c]) return;
+    
+    if (firstClick) {
+        firstClick = false;
+        placeMines(r, c);
+        startTimer();
+    }
+    
+    if (board[r][c] === -1) {
+        revealed[r][c] = true;
+        gameActive = false;
+        stopTimer();
+        for (let i = 0; i < rows; i++)
+            for (let j = 0; j < cols; j++)
+                if (board[i][j] === -1) revealed[i][j] = true;
+        renderBoard();
+        showGameOver(0);
+        return;
+    }
+    
+    floodFill(r, c);
+    renderBoard();
+    
+    let unrevealed = 0;
+    for (let i = 0; i < rows; i++)
+        for (let j = 0; j < cols; j++)
+            if (!revealed[i][j]) unrevealed++;
+    
+    if (unrevealed === mines) {
+        gameActive = false;
+        stopTimer();
+        const sc = (rows * cols - mines) * 10;
+        updateScore(sc);
+        showGameOver(sc);
+    }
+}
+
+function floodFill(r, c) {
+    if (r < 0 || r >= rows || c < 0 || c >= cols || revealed[r][c] || flagged[r][c]) return;
+    revealed[r][c] = true;
+    if (board[r][c] === 0) {
+        for (let dr = -1; dr <= 1; dr++)
+            for (let dc = -1; dc <= 1; dc++)
+                floodFill(r+dr, c+dc);
+    }
+}
+
+function toggleFlag(r, c) {
+    if (!gameActive || revealed[r][c]) return;
+    flagged[r][c] = !flagged[r][c];
+    const flagCount = flagged.flat().filter(Boolean).length;
+    document.getElementById('mineCount').textContent = `💣 ${mines - flagCount}`;
+    renderBoard();
+}
+
+function startGame() {
+    stopTimer();
+    gameSeconds = 0;
+    document.getElementById('gameTimer').textContent = '0:00';
+    initMinesweeper();
+    gameRunning = true;
+}
+
+function pauseGame() { /* 扫雷无需暂停 */ }
+
+function resetGame() {
+    stopTimer();
+    gameSeconds = 0;
+    document.getElementById('gameTimer').textContent = '0:00';
+    initMinesweeper();
+    gameRunning = false;
+}
+
+initMinesweeper();
+</script>
+{% endblock %}

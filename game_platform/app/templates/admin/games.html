@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}游戏管理{% endblock %}
+{% block content %}
+<section class="admin-section">
+    <div class="container">
+        <h2 class="section-title"><i class="fas fa-puzzle-piece"></i> 游戏管理</h2>
+        <div class="games-grid">
+            {% for game in games %}
+            <div class="game-card {% if not game.is_active %}inactive{% endif %}">
+                <div class="game-icon">{{ game.icon }}</div>
+                <h3>{{ game.name }}</h3>
+                <p class="game-desc">{{ game.description }}</p>
+                <div class="game-meta">
+                    <span><i class="fas fa-play"></i> {{ game.play_count }}次</span>
+                    <span class="game-category">{{ game.category }}</span>
+                </div>
+                <div class="game-status">
+                    {% if game.is_active %}
+                    <span class="status-active">已上架</span>
+                    {% else %}
+                    <span class="status-inactive">已下架</span>
+                    {% endif %}
+                </div>
+                <button onclick="toggleGame({{ game.id }})" class="btn btn-sm">
+                    {% if game.is_active %}下架{% else %}上架{% endif %}
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script>
+async function toggleGame(id) {
+    const res = await fetch(`/admin/toggle_game/${id}`, {method: 'POST'});
+    const data = await res.json();
+    if (data.code === 200) { location.reload(); }
+    else { alert(data.msg); }
+}
+</script>
+{% endblock %}

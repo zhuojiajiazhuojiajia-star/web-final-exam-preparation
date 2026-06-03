@@ -1,0 +1,270 @@
+{% extends "game/game_base.html" %}
+{% block title %}打砖块{% endblock %}
+{% block game_content %}
+<div style="text-align:center;">
+    <div style="margin-bottom:8px;">
+        <span id="breakoutLives" style="color:#ff6b6b;font-weight:bold;">❤️❤️❤️</span>
+    </div>
+    <canvas id="breakoutCanvas" width="480" height="400" style="background:#0f0f23;border-radius:8px;max-width:100%;"></canvas>
+</div>
+{% endblock %}
+{% block game_js %}
+<script>
+const canvas = document.getElementById('breakoutCanvas');
+const ctx = canvas.getContext('2d');
+
+const BRICK_ROWS = 5, BRICK_COLS = 8;
+const BRICK_W = 54, BRICK_H = 20, BRICK_PAD = 4, BRICK_TOP = 40, BRICK_LEFT = 10;
+const PADDLE_W = 80, PADDLE_H = 12, PADDLE_Y = canvas.height - 30;
+const BALL_R = 6;
+
+const ROW_COLORS = ['#e74c3c','#f39c12','#f1c40f','#2ecc71','#3498db'];
+const ROW_POINTS = [50, 40, 30, 20, 10];
+
+let paddleX, ballX, ballY, ballDX, ballDY, bricks, score, lives, gameActive, animFrame;
+
+function initBreakout() {
+    paddleX = (canvas.width - PADDLE_W) / 2;
+    resetBall();
+    score = 0;
+    lives = 3;
+    gameActive = true;
+    
+    bricks = [];
+    for (let r = 0; r < BRICK_ROWS; r++) {
+        bricks[r] = [];
+        for (let c = 0; c < BRICK_COLS; c++) {
+            bricks[r][c] = {active: true};
+        }
+    }
+    
+    updateScore(0);
+    updateLives();
+    drawBreakout();
+}
+
+// 修复：重置球位置和速度
+function resetBall() {
+    ballX = canvas.width / 2;
+    ballY = PADDLE_Y - BALL_R - 5;
+    // 修复：随机发射方向，避免总是同一角度
+    const angle = (Math.random() * 60 + 60) * Math.PI / 180; // 60-120度
+    const speed = 4;
+    ballDX = speed * Math.cos(angle) * (Math.random() > 0.5 ? 1 : -1);
+    ballDY = -speed * Math.sin(angle);
+}
+
+function updateLives() {
+    document.getElementById('breakoutLives').textContent = '❤️'.repeat(lives);
+}
+
+function drawBreakout() {
+    ctx.fillStyle = '#0f0f23';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Bricks
+    for (let r = 0; r < BRICK_ROWS; r++) {
+        for (let c = 0; c < BRICK_COLS; c++) {
+            if (!bricks[r][c].active) continue;
+            const x = BRICK_LEFT + c * (BRICK_W + BRICK_PAD);
+            const y = BRICK_TOP + r * (BRICK_H + BRICK_PAD);
+            ctx.fillStyle = ROW_COLORS[r];
+            ctx.shadowColor = ROW_COLORS[r];
+            ctx.shadowBlur = 4;
+            roundRect(ctx, x, y, BRICK_W, BRICK_H, 4);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            ctx.fillRect(x+2, y+2, BRICK_W-4, 3);
+        }
+    }
+    
+    // Paddle
+    const paddleGrad = ctx.createLinearGradient(paddleX, PADDLE_Y, paddleX + PADDLE_W, PADDLE_Y);
+    paddleGrad.addColorStop(0, '#667eea');
+    paddleGrad.addColorStop(1, '#764ba2');
+    ctx.fillStyle = paddleGrad;
+    ctx.shadowColor = '#667eea';
+    ctx.shadowBlur = 8;
+    roundRect(ctx, paddleX, PADDLE_Y, PADDLE_W, PADDLE_H, 6);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    // Ball
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = '#fff';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(ballX, ballY, BALL_R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.lineTo(x+w-r, y);
+    ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+    ctx.lineTo(x+w, y+h-r);
+    ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+    ctx.lineTo(x+r, y+h);
+    ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+    ctx.lineTo(x, y+r);
+    ctx.quadraticCurveTo(x, y, x+r, y);
+    ctx.closePath();
+}
+
+// 修复：连续碰撞检测防止穿隧
+function updateBreakout() {
+    if (!gameActive) return;
+    
+    // 保存上一帧位置用于碰撞检测
+    const prevX = ballX;
+    const prevY = ballY;
+    
+    ballX += ballDX;
+    ballY += ballDY;
+    
+    // Wall collisions
+    if (ballX - BALL_R < 0 || ballX + BALL_R > canvas.width) ballDX = -ballDX;
+    if (ballY - BALL_R < 0) ballDY = -ballDY;
+    
+    // 修复：挡板碰撞检测（包括侧面）
+    if (ballY + BALL_R >= PADDLE_Y && ballY - BALL_R <= PADDLE_Y + PADDLE_H &&
+        ballX >= paddleX && ballX <= paddleX + PADDLE_W) {
+        ballDY = -Math.abs(ballDY);
+        const hitPos = (ballX - paddleX) / PADDLE_W;
+        ballDX = 8 * (hitPos - 0.5); // -4 to 4
+    }
+    
+    // Ball out of bounds
+    if (ballY > canvas.height + BALL_R) {
+        lives--;
+        updateLives();
+        if (lives <= 0) {
+            gameActive = false;
+            stopTimer();
+            cancelAnimationFrame(animFrame);
+            showGameOver(score);
+            return;
+        }
+        resetBall();
+    }
+    
+    // 修复：砖块碰撞检测（连续检测防止穿隧）
+    checkBrickCollisions(prevX, prevY);
+    
+    drawBreakout();
+    if (gameActive) animFrame = requestAnimationFrame(updateBreakout);
+}
+
+// 修复：分离砖块碰撞检测，支持连续检测
+function checkBrickCollisions(prevX, prevY) {
+    // 从球的前一位置到当前位置进行插值检测
+    const steps = 3; // 分3步检测
+    for (let i = 1; i <= steps; i++) {
+        const checkX = prevX + (ballX - prevX) * i / steps;
+        const checkY = prevY + (ballY - prevY) * i / steps;
+        
+        for (let r = 0; r < BRICK_ROWS; r++) {
+            for (let c = 0; c < BRICK_COLS; c++) {
+                if (!bricks[r][c].active) continue;
+                const bx = BRICK_LEFT + c * (BRICK_W + BRICK_PAD);
+                const by = BRICK_TOP + r * (BRICK_H + BRICK_PAD);
+                
+                if (checkX + BALL_R > bx && checkX - BALL_R < bx + BRICK_W &&
+                    checkY + BALL_R > by && checkY - BALL_R < by + BRICK_H) {
+                    
+                    bricks[r][c].active = false;
+                    
+                    // 修复：确定碰撞方向，正确反弹
+                    const overlapLeft = (checkX + BALL_R) - bx;
+                    const overlapRight = (bx + BRICK_W) - (checkX - BALL_R);
+                    const overlapTop = (checkY + BALL_R) - by;
+                    const overlapBottom = (by + BRICK_H) - (checkY - BALL_R);
+                    
+                    const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+                    
+                    if (minOverlap === overlapLeft || minOverlap === overlapRight) {
+                        ballDX = -ballDX;
+                    } else {
+                        ballDY = -ballDY;
+                    }
+                    
+                    // 修复：防止球卡在砖块内，稍微回退
+                    ballX = prevX;
+                    ballY = prevY;
+                    
+                    score += ROW_POINTS[r];
+                    updateScore(score);
+                    
+                    // Check win
+                    const remaining = bricks.flat().filter(b => b.active).length;
+                    if (remaining === 0) {
+                        gameActive = false;
+                        stopTimer();
+                        cancelAnimationFrame(animFrame);
+                        showGameOver(score);
+                    }
+                    return; // 只处理一次碰撞
+                }
+            }
+        }
+    }
+}
+
+// Mouse control
+canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    paddleX = (e.clientX - rect.left) * scaleX - PADDLE_W / 2;
+    paddleX = Math.max(0, Math.min(canvas.width - PADDLE_W, paddleX));
+});
+
+// Touch control
+canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    paddleX = (e.touches[0].clientX - rect.left) * scaleX - PADDLE_W / 2;
+    paddleX = Math.max(0, Math.min(canvas.width - PADDLE_W, paddleX));
+}, {passive: false});
+
+// Keyboard
+document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') paddleX = Math.max(0, paddleX - 30);
+    if (e.key === 'ArrowRight') paddleX = Math.min(canvas.width - PADDLE_W, paddleX + 30);
+});
+
+function startGame() {
+    if (animFrame) cancelAnimationFrame(animFrame);
+    initBreakout();
+    startTimer();
+    animFrame = requestAnimationFrame(updateBreakout);
+    gameRunning = true;
+}
+
+function pauseGame() {
+    if (!gameActive) return;
+    gameActive = !gameActive;
+    if (!gameActive) {
+        cancelAnimationFrame(animFrame);
+        stopTimer();
+    } else {
+        animFrame = requestAnimationFrame(updateBreakout);
+        startTimer();
+    }
+}
+
+function resetGame() {
+    if (animFrame) cancelAnimationFrame(animFrame);
+    stopTimer();
+    gameSeconds = 0;
+    document.getElementById('gameTimer').textContent = '0:00';
+    initBreakout();
+    gameRunning = false;
+}
+
+initBreakout();
+</script>
+{% endblock %}

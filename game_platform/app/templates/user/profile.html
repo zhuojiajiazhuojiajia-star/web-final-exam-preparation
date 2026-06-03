@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}个人中心{% endblock %}
+{% block content %}
+<section class="profile-section">
+    <div class="container">
+        <div class="profile-layout">
+            <!-- Left: User Info Card -->
+            <div class="profile-sidebar">
+                <div class="profile-card">
+                    <div class="profile-avatar">
+                        <div class="avatar-placeholder">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    </div>
+                    <h2>{{ current_user.nickname or current_user.username }}</h2>
+                    <p class="profile-bio">{{ current_user.bio }}</p>
+                    <div class="profile-stats">
+                        <div class="pstat">
+                            <span class="pstat-value">{{ current_user.total_score }}</span>
+                            <span class="pstat-label">总积分</span>
+                        </div>
+                        <div class="pstat">
+                            <span class="pstat-value">{{ current_user.games_played }}</span>
+                            <span class="pstat-label">游戏次数</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Edit Profile -->
+                <div class="profile-card">
+                    <h3><i class="fas fa-edit"></i> 修改资料</h3>
+                    <form method="POST" action="{{ url_for('user.edit_profile') }}" class="auth-form">
+                        <div class="form-group">
+                            <label>昵称</label>
+                            <input type="text" name="nickname" value="{{ current_user.nickname or '' }}" placeholder="输入昵称">
+                        </div>
+                        <div class="form-group">
+                            <label>个性签名</label>
+                            <textarea name="bio" rows="3" placeholder="介绍一下自己" maxlength="200">{{ current_user.bio }}</textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">保存修改</button>
+                    </form>
+                </div>
+
+                <!-- Change Password -->
+                <div class="profile-card">
+                    <h3><i class="fas fa-key"></i> 修改密码</h3>
+                    <form method="POST" action="{{ url_for('user.change_password') }}" class="auth-form">
+                        <div class="form-group">
+                            <label>原密码</label>
+                            <input type="password" name="old_password" required placeholder="输入原密码">
+                        </div>
+                        <div class="form-group">
+                            <label>新密码</label>
+                            <input type="password" name="new_password" required placeholder="输入新密码（至少6位）" minlength="6">
+                        </div>
+                        <div class="form-group">
+                            <label>确认新密码</label>
+                            <input type="password" name="confirm_password" required placeholder="再次输入新密码">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">修改密码</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Right: Achievements & Favorites -->
+            <div class="profile-main">
+                <!-- Achievements -->
+                <div class="profile-card">
+                    <h3><i class="fas fa-trophy"></i> 我的成就 ({{ achievements|length }}/{{ all_achievements|length }})</h3>
+                    <div class="achievements-grid">
+                        {% for ach in all_achievements %}
+                        <div class="achievement-card {% if ach.id in achievement_dict %}unlocked{% else %}locked{% endif %}">
+                            <div class="achievement-icon">
+                                {% if ach.id in achievement_dict %}
+                                <i class="fas fa-medal"></i>
+                                {% else %}
+                                <i class="fas fa-lock"></i>
+                                {% endif %}
+                            </div>
+                            <h4>{{ ach.name }}</h4>
+                            <p>{{ ach.description }}</p>
+                            {% if ach.id in achievement_dict %}
+                            <span class="achievement-points">+{{ ach.points }}积分</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Favorites -->
+                <div class="profile-card">
+                    <h3><i class="fas fa-heart"></i> 我的收藏</h3>
+                    {% if favorites %}
+                    <div class="favorites-list">
+                        {% for fav in favorites %}
+                        <div class="fav-item">
+                            <span class="fav-icon">{{ fav.game.icon }}</span>
+                            <span class="fav-name">{{ fav.game.name }}</span>
+                            <a href="{{ url_for('game.play', game_id=fav.game_id) }}" class="btn btn-sm">去玩</a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="empty-text">还没有收藏任何游戏，去<a href="{{ url_for('main.index') }}#games">游戏大厅</a>看看吧！</p>
+                    {% endif %}
+                </div>
+
+                <!-- Best Scores -->
+                <div class="profile-card">
+                    <h3><i class="fas fa-chart-bar"></i> 最佳成绩</h3>
+                    {% if best_scores %}
+                    <div class="scores-list">
+                        {% for bs in best_scores %}
+                        <div class="score-item">
+                            <span class="score-game">{{ bs.game_id }}号游戏</span>
+                            <span class="score-value">最高 {{ bs.best_score }} 分</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="empty-text">还没有游戏记录，快去玩一局吧！</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

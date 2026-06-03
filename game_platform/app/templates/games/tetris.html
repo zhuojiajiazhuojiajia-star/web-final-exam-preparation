@@ -1,0 +1,308 @@
+{% extends "game/game_base.html" %}
+{% block title %}俄罗斯方块{% endblock %}
+{% block game_content %}
+<div style="display:flex;gap:15px;justify-content:center;align-items:flex-start;">
+    <canvas id="tetrisCanvas" width="250" height="500" style="background:#0f0f23;border-radius:8px;border:2px solid #333;"></canvas>
+    <div style="text-align:center;">
+        <div style="background:#1a1a2e;border-radius:8px;padding:15px;margin-bottom:10px;">
+            <p style="color:#888;font-size:0.8rem;margin-bottom:5px;">下一个</p>
+            <canvas id="nextCanvas" width="100" height="100" style="background:#0f0f23;border-radius:6px;"></canvas>
+        </div>
+        <div style="background:#1a1a2e;border-radius:8px;padding:15px;">
+            <p style="color:#888;font-size:0.8rem;">等级</p>
+            <p id="tetrisLevel" style="color:#667eea;font-size:1.5rem;font-weight:700;">1</p>
+            <p style="color:#888;font-size:0.8rem;margin-top:8px;">消行</p>
+            <p id="tetrisLines" style="color:#48bb78;font-size:1.5rem;font-weight:700;">0</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block touch_controls %}
+<div class="touch-controls">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:5px;">
+        <button class="touch-btn" onclick="tetrisRotate()">↻</button>
+        <div style="display:flex;gap:5px;">
+            <button class="touch-btn" ontouchstart="tetrisMove('left')" onclick="tetrisMove('left')">←</button>
+            <button class="touch-btn" ontouchstart="tetrisDrop()" onclick="tetrisDrop()">↓</button>
+            <button class="touch-btn" ontouchstart="tetrisMove('right')" onclick="tetrisMove('right')">→</button>
+        </div>
+        <button class="touch-btn" style="width:130px;" ontouchstart="tetrisHardDrop()" onclick="tetrisHardDrop()">硬降</button>
+    </div>
+</div>
+{% endblock %}
+{% block game_js %}
+<script>
+const COLS = 10, ROWS = 20, BLOCK = 25;
+const canvas = document.getElementById('tetrisCanvas');
+const ctx = canvas.getContext('2d');
+const nextCanvas = document.getElementById('nextCanvas');
+const nextCtx = nextCanvas.getContext('2d');
+
+const SHAPES = {
+    I: {shape:[[1,1,1,1]], color:'#00f5ff'},
+    O: {shape:[[1,1],[1,1]], color:'#ffd700'},
+    T: {shape:[[0,1,0],[1,1,1]], color:'#a855f7'},
+    S: {shape:[[0,1,1],[1,1,0]], color:'#22c55e'},
+    Z: {shape:[[1,1,0],[0,1,1]], color:'#ef4444'},
+    J: {shape:[[1,0,0],[1,1,1]], color:'#3b82f6'},
+    L: {shape:[[0,0,1],[1,1,1]], color:'#f97316'}
+};
+const PIECE_NAMES = Object.keys(SHAPES);
+
+let board, current, next, score, lines, level, dropInterval, dropTimer, gameActive, animFrame, lastDropTime;
+
+function initTetris() {
+    board = Array.from({length:ROWS}, () => Array(COLS).fill(null));
+    score = 0; lines = 0; level = 1;
+    dropInterval = 1000;
+    gameActive = true;
+    lastDropTime = 0;
+    current = newPiece();
+    next = newPiece();
+    updateScore(0);
+    document.getElementById('tetrisLevel').textContent = level;
+    document.getElementById('tetrisLines').textContent = lines;
+    drawBoard();
+    drawNext();
+}
+
+function newPiece() {
+    const name = PIECE_NAMES[Math.floor(Math.random() * PIECE_NAMES.length)];
+    const s = SHAPES[name];
+    return {
+        shape: s.shape.map(r => [...r]),
+        color: s.color,
+        // 修复：生成在顶部上方 2 格，给玩家缓冲时间
+        x: Math.floor((COLS - s.shape[0].length) / 2),
+        y: -2
+    };
+}
+
+function drawBlock(ctx, x, y, color, size=BLOCK) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x*size+1, y*size+1, size-2, size-2);
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillRect(x*size+1, y*size+1, size-2, 3);
+    ctx.fillRect(x*size+1, y*size+1, 3, size-2);
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillRect(x*size+1, y*size+size-3, size-2, 2);
+    ctx.fillRect(x*size+size-3, y*size+1, 2, size-2);
+}
+
+function drawBoard() {
+    ctx.fillStyle = '#0f0f23';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    for (let r = 0; r <= ROWS; r++) { ctx.beginPath(); ctx.moveTo(0,r*BLOCK); ctx.lineTo(COLS*BLOCK,r*BLOCK); ctx.stroke(); }
+    for (let c = 0; c <= COLS; c++) { ctx.beginPath(); ctx.moveTo(c*BLOCK,0); ctx.lineTo(c*BLOCK,ROWS*BLOCK); ctx.stroke(); }
+    
+    for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++)
+            if (board[r][c]) drawBlock(ctx, c, r, board[r][c]);
+    
+    if (current) {
+        // Ghost piece
+        let ghostY = current.y;
+        while (isValid(current.shape, current.x, ghostY+1)) ghostY++;
+        current.shape.forEach((row, r) => row.forEach((v, c) => {
+            if (v && ghostY + r >= 0) {
+                ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                ctx.fillRect((current.x+c)*BLOCK+1, (ghostY+r)*BLOCK+1, BLOCK-2, BLOCK-2);
+            }
+        }));
+        
+        // Current piece
+        current.shape.forEach((row, r) => row.forEach((v, c) => {
+            if (v && current.y + r >= 0) drawBlock(ctx, current.x+c, current.y+r, current.color);
+        }));
+    }
+}
+
+function drawNext() {
+    nextCtx.fillStyle = '#0f0f23';
+    nextCtx.fillRect(0, 0, 100, 100);
+    if (!next) return;
+    const offsetX = Math.floor((4 - next.shape[0].length) / 2);
+    const offsetY = Math.floor((4 - next.shape.length) / 2);
+    next.shape.forEach((row, r) => row.forEach((v, c) => {
+        if (v) drawBlock(nextCtx, offsetX+c, offsetY+r, next.color, 22);
+    }));
+}
+
+function isValid(shape, px, py) {
+    return shape.every((row, r) => row.every((v, c) => {
+        if (!v) return true;
+        const x = px+c, y = py+r;
+        return x >= 0 && x < COLS && y < ROWS && (y < 0 || !board[y][x]);
+    }));
+}
+
+function rotate(shape) {
+    const rows = shape.length, cols = shape[0].length;
+    return Array.from({length:cols}, (_, c) => Array.from({length:rows}, (_, r) => shape[rows-1-r][c]));
+}
+
+// 修复：硬降计分改为落地时计算
+function place() {
+    let dropDistance = 0;
+    current.shape.forEach((row, r) => row.forEach((v, c) => {
+        if (v) {
+            const boardY = current.y + r;
+            if (boardY >= 0) board[boardY][current.x+c] = current.color;
+            dropDistance = Math.max(dropDistance, boardY);
+        }
+    }));
+    // 硬降奖励：每格 2 分
+    if (hardDropActive) {
+        score += dropDistance * 2;
+        hardDropActive = false;
+    }
+    clearLines();
+    current = next;
+    next = newPiece();
+    drawNext();
+    // 修复：检查新方块是否能放置（考虑顶部缓冲）
+    if (!isValid(current.shape, current.x, current.y)) {
+        gameActive = false;
+        stopTimer();
+        cancelAnimationFrame(animFrame);
+        showGameOver(score);
+    }
+}
+
+let hardDropActive = false;
+
+function clearLines() {
+    let cleared = 0;
+    for (let r = ROWS-1; r >= 0; r--) {
+        if (board[r].every(cell => cell !== null)) {
+            board.splice(r, 1);
+            board.unshift(Array(COLS).fill(null));
+            cleared++;
+            r++;
+        }
+    }
+    if (cleared > 0) {
+        const points = [0, 100, 300, 500, 800];
+        score += points[cleared] * level;
+        lines += cleared;
+        level = Math.floor(lines / 10) + 1;
+        dropInterval = Math.max(100, 1000 - (level-1) * 80);
+        updateScore(score);
+        document.getElementById('tetrisLevel').textContent = level;
+        document.getElementById('tetrisLines').textContent = lines;
+    }
+}
+
+function tick(timestamp) {
+    if (!gameActive) return;
+    
+    // 修复：使用基于时间的下落，而不是固定间隔
+    if (!lastDropTime) lastDropTime = timestamp;
+    const elapsed = timestamp - lastDropTime;
+    
+    if (elapsed >= dropInterval) {
+        if (isValid(current.shape, current.x, current.y+1)) {
+            current.y++;
+        } else {
+            place();
+        }
+        lastDropTime = timestamp;
+    }
+    
+    drawBoard();
+    animFrame = requestAnimationFrame(tick);
+}
+
+function tetrisMove(dir) {
+    if (!gameActive || !current) return;
+    const nx = dir === 'left' ? current.x-1 : current.x+1;
+    if (isValid(current.shape, nx, current.y)) current.x = nx;
+    drawBoard();
+}
+
+// 修复：旋转 wall-kick 支持 2 格偏移
+function tetrisRotate() {
+    if (!gameActive || !current) return;
+    const rotated = rotate(current.shape);
+    // 尝试不同偏移：0, -1, +1, -2, +2
+    const kicks = [0, -1, 1, -2, 2];
+    for (const kick of kicks) {
+        if (isValid(rotated, current.x + kick, current.y)) {
+            current.shape = rotated;
+            current.x += kick;
+            drawBoard();
+            return;
+        }
+    }
+}
+
+function tetrisDrop() {
+    if (!gameActive || !current) return;
+    if (isValid(current.shape, current.x, current.y+1)) {
+        current.y++;
+        score += 1;
+        updateScore(score);
+    }
+    drawBoard();
+}
+
+function tetrisHardDrop() {
+    if (!gameActive || !current) return;
+    hardDropActive = true;
+    while (isValid(current.shape, current.x, current.y+1)) {
+        current.y++;
+    }
+    place();
+    drawBoard();
+}
+
+document.addEventListener('keydown', e => {
+    if (!gameActive) return;
+    switch(e.key) {
+        case 'ArrowLeft': e.preventDefault(); tetrisMove('left'); break;
+        case 'ArrowRight': e.preventDefault(); tetrisMove('right'); break;
+        case 'ArrowDown': e.preventDefault(); tetrisDrop(); break;
+        case 'ArrowUp': e.preventDefault(); tetrisRotate(); break;
+        case ' ': e.preventDefault(); tetrisHardDrop(); break;
+    }
+});
+
+function startGame() {
+    if (animFrame) cancelAnimationFrame(animFrame);
+    initTetris();
+    startTimer();
+    lastDropTime = 0;
+    animFrame = requestAnimationFrame(tick);
+    gameRunning = true;
+}
+
+// 修复：暂停时正确停止 requestAnimationFrame
+function pauseGame() {
+    if (!gameActive && !paused) return;
+    paused = !paused;
+    if (paused) {
+        cancelAnimationFrame(animFrame);
+        stopTimer();
+    } else {
+        startTimer();
+        lastDropTime = performance.now();
+        animFrame = requestAnimationFrame(tick);
+    }
+}
+
+let paused = false;
+
+function resetGame() {
+    if (animFrame) cancelAnimationFrame(animFrame);
+    stopTimer();
+    gameSeconds = 0;
+    document.getElementById('gameTimer').textContent = '0:00';
+    initTetris();
+    gameRunning = false;
+}
+
+initTetris();
+</script>
+{% endblock %}

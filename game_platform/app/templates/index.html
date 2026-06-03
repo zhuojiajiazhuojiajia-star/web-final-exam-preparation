@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}首页{% endblock %}
+{% block content %}
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-content">
+        <h1 class="hero-title">🎮 欢迎来到游戏乐园</h1>
+        <p class="hero-subtitle">经典休闲小游戏合集，随时随地享受游戏乐趣！</p>
+        {% if not current_user.is_authenticated %}
+        <div class="hero-buttons">
+            <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">立即注册</a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-outline btn-lg">已有账号？登录</a>
+        </div>
+        {% else %}
+        <div class="hero-buttons">
+            <a href="#games" class="btn btn-primary btn-lg">开始游戏</a>
+            <a href="{{ url_for('game.history') }}" class="btn btn-outline btn-lg">我的记录</a>
+        </div>
+        {% endif %}
+    </div>
+    <div class="hero-decoration">
+        <div class="floating-game">🐍</div>
+        <div class="floating-game" style="animation-delay: 0.5s">🔢</div>
+        <div class="floating-game" style="animation-delay: 1s">💣</div>
+        <div class="floating-game" style="animation-delay: 1.5s">🧱</div>
+        <div class="floating-game" style="animation-delay: 2s">🃏</div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="stats-section">
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <i class="fas fa-gamepad"></i>
+                <h3>{{ games|length }}</h3>
+                <p>款游戏</p>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-users"></i>
+                <h3>100+</h3>
+                <p>注册玩家</p>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-play-circle"></i>
+                <h3>1000+</h3>
+                <p>游戏次数</p>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-star"></i>
+                <h3>4.8</h3>
+                <p>用户评分</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Popular Games -->
+<section class="section">
+    <div class="container">
+        <h2 class="section-title"><i class="fas fa-fire"></i> 热门游戏</h2>
+        <div class="games-grid">
+            {% for game in popular_games %}
+            <div class="game-card popular">
+                <div class="game-icon">{{ game.icon }}</div>
+                <h3>{{ game.name }}</h3>
+                <p class="game-desc">{{ game.description[:30] }}...</p>
+                <div class="game-meta">
+                    <span><i class="fas fa-play"></i> {{ game.play_count }}次游玩</span>
+                    <span class="game-category">{{ game.category }}</span>
+                </div>
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('game.play', game_id=game.id) }}" class="btn btn-primary btn-block">开始游戏</a>
+                {% else %}
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-block">登录后游玩</a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- All Games -->
+<section class="section section-dark" id="games">
+    <div class="container">
+        <h2 class="section-title"><i class="fas fa-th"></i> 游戏大厅</h2>
+        <div class="games-grid">
+            {% for game in games %}
+            <div class="game-card">
+                <div class="game-icon">{{ game.icon }}</div>
+                <h3>{{ game.name }}</h3>
+                <p class="game-desc">{{ game.description }}</p>
+                <div class="game-meta">
+                    <span><i class="fas fa-play"></i> {{ game.play_count }}次</span>
+                    <span class="game-category">{{ game.category }}</span>
+                </div>
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('game.play', game_id=game.id) }}" class="btn btn-primary btn-block">开始游戏</a>
+                {% else %}
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-block">登录后游玩</a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Latest Scores -->
+{% if latest_scores %}
+<section class="section">
+    <div class="container">
+        <h2 class="section-title"><i class="fas fa-chart-line"></i> 最新动态</h2>
+        <div class="scores-list">
+            {% for score in latest_scores %}
+            <div class="score-item">
+                <span class="score-user"><i class="fas fa-user"></i> {{ score.user.nickname or score.user.username }}</span>
+                <span class="score-game">{{ score.game.icon }} {{ score.game.name }}</span>
+                <span class="score-value">{{ score.score }}分</span>
+                <span class="score-time">{{ score.created_at.strftime('%m-%d %H:%M') }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

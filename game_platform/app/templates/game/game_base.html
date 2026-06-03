@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% block title %}{{ game.name }}{% endblock %}
+{% block extra_css %}
+<style>
+.game-wrapper {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+}
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    color: white;
+}
+.game-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+.game-header .game-actions {
+    display: flex;
+    gap: 10px;
+}
+.game-header .btn {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+}
+.game-info-bar {
+    display: flex;
+    justify-content: space-around;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+.game-info-item {
+    text-align: center;
+}
+.game-info-item .label {
+    font-size: 0.8rem;
+    color: #666;
+}
+.game-info-item .value {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #333;
+}
+.game-canvas-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #1a1a2e;
+    border-radius: 12px;
+    padding: 20px;
+    min-height: 400px;
+}
+.game-controls {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 15px;
+}
+.game-over-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.game-over-overlay.active {
+    display: flex;
+}
+.game-over-card {
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    text-align: center;
+    max-width: 400px;
+}
+.game-over-card h2 {
+    color: #333;
+    margin-bottom: 10px;
+}
+.game-over-card .final-score {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #667eea;
+    margin: 20px 0;
+}
+/* Mobile touch controls */
+.touch-controls {
+    display: none;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 15px;
+}
+.touch-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    border: 2px solid #667eea;
+    background: white;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.touch-btn:active {
+    background: #667eea;
+    color: white;
+}
+@media (max-width: 768px) {
+    .touch-controls { display: flex; }
+    .game-canvas-container { padding: 10px; }
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="game-wrapper">
+    <div class="game-header">
+        <h2>{{ game.icon }} {{ game.name }}</h2>
+        <div class="game-actions">
+            <a href="{{ url_for('game.leaderboard', game_id=game.id) }}" class="btn btn-outline" style="color:white;border-color:white"><i class="fas fa-trophy"></i> 排行榜</a>
+            <a href="{{ url_for('main.index') }}" class="btn btn-outline" style="color:white;border-color:white"><i class="fas fa-home"></i> 返回</a>
+        </div>
+    </div>
+    <div class="game-info-bar">
+        <div class="game-info-item">
+            <div class="label">得分</div>
+            <div class="value" id="currentScore">0</div>
+        </div>
+        <div class="game-info-item">
+            <div class="label">最高分</div>
+            <div class="value" id="bestScore">0</div>
+        </div>
+        <div class="game-info-item">
+            <div class="label">用时</div>
+            <div class="value" id="gameTimer">0:00</div>
+        </div>
+    </div>
+    <div class="game-canvas-container" id="gameContainer">
+        {% block game_content %}{% endblock %}
+    </div>
+    <div class="game-controls">
+        <button class="btn btn-primary" onclick="startGame()"><i class="fas fa-play"></i> 开始游戏</button>
+        <button class="btn btn-outline" onclick="pauseGame()"><i class="fas fa-pause"></i> 暂停</button>
+        <button class="btn btn-outline" onclick="resetGame()"><i class="fas fa-redo"></i> 重新开始</button>
+    </div>
+    {% block touch_controls %}{% endblock %}
+</div>
+
+<!-- Game Over Overlay -->
+<div class="game-over-overlay" id="gameOverOverlay">
+    <div class="game-over-card">
+        <h2>游戏结束！</h2>
+        <div class="final-score" id="finalScore">0</div>
+        <p id="gameOverMsg">再接再厉！</p>
+        <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+            <button class="btn btn-primary" onclick="restartGame()"><i class="fas fa-redo"></i> 再来一局</button>
+            <a href="{{ url_for('main.index') }}" class="btn btn-outline"><i class="fas fa-home"></i> 返回大厅</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const GAME_ID = {{ game.id }};
+let gameScore = 0;
+let gameTimer = null;
+let gameSeconds = 0;
+let gameRunning = false;
+
+function updateScore(score) {
+    gameScore = score;
+    document.getElementById('currentScore').textContent = score;
+}
+
+function startTimer() {
+    gameSeconds = 0;
+    gameTimer = setInterval(() => {
+        gameSeconds++;
+        const min = Math.floor(gameSeconds / 60);
+        const sec = gameSeconds % 60;
+        document.getElementById('gameTimer').textContent = `${min}:${sec.toString().padStart(2, '0')}`;
+    }, 1000);
+}
+
+function stopTimer() {
+    if (gameTimer) { clearInterval(gameTimer); gameTimer = null; }
+}
+
+async function submitScore(score) {
+    stopTimer();
+    try {
+        const res = await fetch('/game/submit_score', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({game_id: GAME_ID, score: score, duration: gameSeconds, difficulty: 'normal'})
+        });
+        const data = await res.json();
+        if (data.code === 200) {
+            document.getElementById('bestScore').textContent = data.data.best_score;
+            if (data.data.new_achievements && data.data.new_achievements.length > 0) {
+                alert('🎉 解锁新成就：' + data.data.new_achievements.join('、'));
+            }
+        }
+    } catch(e) { console.error(e); }
+}
+
+function showGameOver(score) {
+    document.getElementById('finalScore').textContent = score;
+    document.getElementById('gameOverOverlay').classList.add('active');
+    submitScore(score);
+}
+
+function restartGame() {
+    document.getElementById('gameOverOverlay').classList.remove('active');
+    resetGame();
+}
+
+function startGame() { /* Override in game scripts */ }
+function pauseGame() { /* Override in game scripts */ }
+function resetGame() { /* Override in game scripts */ }
+</script>
+{% block game_js %}{% endblock %}
+{% endblock %}
