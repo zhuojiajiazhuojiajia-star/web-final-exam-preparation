@@ -16,7 +16,7 @@ class GameRoom(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
-    game = db.relationship('Game', backref='rooms', lazy='dynamic')
+    game = db.relationship('Game', backref='rooms')
     player1 = db.relationship('User', foreign_keys=[player1_id], backref='rooms_as_player1')
     player2 = db.relationship('User', foreign_keys=[player2_id], backref='rooms_as_player2')
     winner = db.relationship('User', foreign_keys=[winner_id])
