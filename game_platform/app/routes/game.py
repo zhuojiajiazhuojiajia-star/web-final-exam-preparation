@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, redirect, url_fo
 from flask_login import login_required, current_user
 from models.game import Game, GameScore, GameFavorite
 from models.user import User
-from models.game import Achievement, UserAchievement
+from models.achievement import Achievement, UserAchievement
 from models import db
 from datetime import datetime
 from functools import wraps
