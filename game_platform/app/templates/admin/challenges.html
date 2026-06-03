@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}每日挑战管理{% endblock %}
+{% block content %}
+<div class="admin-section">
+    <div class="container">
+        <div class="admin-header">
+            <h1><i class="fas fa-tasks"></i> 每日挑战管理</h1>
+            <a href="{{ url_for('admin.add_challenge') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> 添加挑战
+            </a>
+        </div>
+
+        {% if challenges %}
+        <div class="admin-table-wrapper">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>图标</th>
+                        <th>名称</th>
+                        <th>类型</th>
+                        <th>目标值</th>
+                        <th>奖励</th>
+                        <th>难度</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for challenge in challenges %}
+                    <tr>
+                        <td class="item-icon-cell">{{ challenge.icon or '🎯' }}</td>
+                        <td>{{ challenge.name }}</td>
+                        <td>{{ challenge.challenge_type }}</td>
+                        <td>{{ challenge.target_value }}</td>
+                        <td><i class="fas fa-coins"></i> {{ challenge.coin_reward }}</td>
+                        <td><span class="difficulty-badge difficulty-{{ challenge.difficulty }}">{{ challenge.difficulty }}</span></td>
+                        <td>
+                            {% if challenge.is_active %}
+                            <span class="status-active">启用中</span>
+                            {% else %}
+                            <span class="status-inactive">已禁用</span>
+                            {% endif %}
+                        </td>
+                        <td class="action-cell">
+                            <a href="{{ url_for('admin.edit_challenge', challenge_id=challenge.id) }}" class="btn btn-sm btn-outline">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button onclick="toggleChallenge({{ challenge.id }})" class="btn btn-sm btn-outline">
+                                <i class="fas fa-power-off"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-text">暂无挑战任务</div>
+        {% endif %}
+
+        <a href="{{ url_for('admin.dashboard') }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i> 返回管理面板
+        </a>
+    </div>
+</div>
+
+<style>
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.admin-header h1 {
+    font-size: 1.8rem;
+    color: var(--gray-900);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.admin-header h1 i {
+    color: var(--primary);
+}
+
+.admin-table-wrapper {
+    overflow-x: auto;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.admin-table th {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 500;
+}
+
+.admin-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.admin-table tr:hover {
+    background: var(--gray-100);
+}
+
+.item-icon-cell {
+    font-size: 1.5rem;
+}
+
+.difficulty-badge {
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.difficulty-easy { background: #c8e6c9; color: #2e7d32; }
+.difficulty-normal { background: #fff3e0; color: #ef6c00; }
+.difficulty-hard { background: #ffcdd2; color: #c62828; }
+
+.status-active { color: var(--success); font-weight: 500; }
+.status-inactive { color: var(--danger); font-weight: 500; }
+
+.action-cell {
+    display: flex;
+    gap: 5px;
+}
+</style>
+
+<script>
+function toggleChallenge(challengeId) {
+    fetch(`/admin/challenges/toggle/${challengeId}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.msg);
+        location.reload();
+    });
+}
+</script>
+{% endblock %}

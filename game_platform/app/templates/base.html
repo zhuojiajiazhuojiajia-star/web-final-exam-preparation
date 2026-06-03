@@ -21,8 +21,10 @@
             <ul class="nav-menu" id="navMenu">
                 <li><a href="{{ url_for('main.index') }}" class="nav-link"><i class="fas fa-home"></i> 首页</a></li>
                 <li><a href="{{ url_for('main.index') }}#games" class="nav-link"><i class="fas fa-dice"></i> 游戏大厅</a></li>
-                <li><a href="{{ url_for('game.history') }}" class="nav-link"><i class="fas fa-trophy"></i> 我的记录</a></li>
+                <li><a href="{{ url_for('shop.index') }}" class="nav-link"><i class="fas fa-store"></i> 商城</a></li>
                 {% if current_user.is_authenticated %}
+                <li><a href="{{ url_for('shop.daily_challenges') }}" class="nav-link"><i class="fas fa-tasks"></i> 每日任务</a></li>
+                <li><a href="{{ url_for('game.history') }}" class="nav-link"><i class="fas fa-trophy"></i> 我的记录</a></li>
                 <li><a href="{{ url_for('user.profile') }}" class="nav-link"><i class="fas fa-user"></i> {{ current_user.nickname or current_user.username }}</a></li>
                 {% if current_user.is_admin %}
                 <li><a href="{{ url_for('admin.dashboard') }}" class="nav-link"><i class="fas fa-cog"></i> 管理</a></li>

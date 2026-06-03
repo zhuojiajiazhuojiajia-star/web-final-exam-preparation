@@ -19,11 +19,13 @@ def create_app():
     from app.routes.game import game_bp
     from app.routes.user import user_bp
     from app.routes.admin import admin_bp
+    from app.routes.shop import shop_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(game_bp, url_prefix='/game')
     app.register_blueprint(user_bp, url_prefix='/user')
     app.register_blueprint(admin_bp, url_prefix='/admin')
+    app.register_blueprint(shop_bp, url_prefix='/shop')
 
     return app

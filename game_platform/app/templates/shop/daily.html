@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+{% block title %}每日挑战{% endblock %}
+{% block content %}
+<div class="daily-section">
+    <div class="container">
+        <div class="daily-header">
+            <h1><i class="fas fa-calendar-check"></i> 每日挑战</h1>
+            <p>完成每日任务获取金币奖励！任务每天重置</p>
+            <div class="coin-display">
+                <i class="fas fa-coins"></i>
+                <span class="coin-amount">{{ currency.coins }}</span>
+                <span class="coin-label">金币</span>
+            </div>
+        </div>
+
+        <!-- 任务统计 -->
+        <div class="daily-stats">
+            <div class="daily-stat">
+                <i class="fas fa-tasks"></i>
+                <div class="stat-info">
+                    <span class="stat-value">{{ user_challenges|length }}</span>
+                    <span class="stat-label">今日任务</span>
+                </div>
+            </div>
+            <div class="daily-stat">
+                <i class="fas fa-check-circle"></i>
+                <div class="stat-info">
+                    <span class="stat-value">{{ user_challenges|selectattr('progress.is_completed')|list|length }}</span>
+                    <span class="stat-label">已完成</span>
+                </div>
+            </div>
+            <div class="daily-stat">
+                <i class="fas fa-gift"></i>
+                <div class="stat-info">
+                    {% set total_reward = user_challenges|selectattr('progress.is_completed')|rejectattr('progress.is_claimed')|sum(attribute='challenge.coin_reward') %}
+                    <span class="stat-value">{{ total_reward }}</span>
+                    <span class="stat-label">待领取</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 任务列表 -->
+        {% if user_challenges %}
+        <div class="challenges-list">
+            {% for uc in user_challenges %}
+            {% set challenge = uc.challenge %}
+            {% set progress = uc.progress %}
+            <div class="challenge-card {% if progress.is_completed %}completed{% endif %}">
+                <div class="challenge-icon">{{ challenge.icon or '🎯' }}</div>
+                <div class="challenge-info">
+                    <h3>{{ challenge.name }}</h3>
+                    <p>{{ challenge.description }}</p>
+                    <div class="challenge-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: {{ [progress.current_progress / challenge.target_value * 100, 100]|min }}%"></div>
+                        </div>
+                        <span class="progress-text">
+                            {{ [progress.current_progress, challenge.target_value]|min }} / {{ challenge.target_value }}
+                        </span>
+                    </div>
+                </div>
+                <div class="challenge-reward">
+                    <div class="reward-coins">
+                        <i class="fas fa-coins"></i>
+                        <span>{{ challenge.coin_reward }}</span>
+                    </div>
+                    {% if progress.is_completed %}
+                        {% if progress.is_claimed %}
+                        <button class="btn btn-outline btn-sm" disabled>
+                            <i class="fas fa-check"></i> 已领取
+                        </button>
+                        {% else %}
+                        <button class="btn btn-primary btn-sm" onclick="claimReward({{ challenge.id }}, {{ challenge.coin_reward }})">
+                            <i class="fas fa-gift"></i> 领取
+                        </button>
+                        {% endif %}
+                    {% else %}
+                    <span class="reward-status">进行中</span>
+                    {% endif %}
+                </div>
+                <div class="challenge-difficulty difficulty-{{ challenge.difficulty }}">
+                    {{ challenge.difficulty }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-text">
+            <i class="fas fa-tasks"></i>
+            <p>今日暂无挑战任务，敬请期待！</p>
+        </div>
+        {% endif %}
+
+        <!-- 快捷链接 -->
+        <div class="daily-links">
+            <a href="{{ url_for('shop.index') }}" class="daily-link-card">
+                <i class="fas fa-store"></i>
+                <span>前往商城</span>
+            </a>
+            <a href="{{ url_for('main.index') }}#games" class="daily-link-card">
+                <i class="fas fa-gamepad"></i>
+                <span>开始游戏</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.daily-section {
+    padding: 40px 20px;
+    min-height: calc(100vh - 64px - 80px);
+}
+
+.daily-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.daily-header h1 {
+    font-size: 2.5rem;
+    color: var(--gray-900);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.daily-header h1 i {
+    color: var(--success);
+}
+
+.daily-header p {
+    color: var(--gray-600);
+    margin-bottom: 20px;
+}
+
+.coin-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #ffd700, #ffb347);
+    color: #5a4a00;
+    padding: 12px 24px;
+    border-radius: 50px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
+
+.daily-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    max-width: 600px;
+    margin: 0 auto 40px;
+}
+
+.daily-stat {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: white;
+    padding: 20px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.daily-stat i {
+    font-size: 2rem;
+    color: var(--primary);
+}
+
+.stat-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+}
+
+.challenges-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-width: 800px;
+    margin: 0 auto 40px;
+}
+
+.challenge-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: white;
+    padding: 20px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+    position: relative;
+}
+
+.challenge-card:hover {
+    box-shadow: var(--shadow-lg);
+}
+
+.challenge-card.completed {
+    border-left: 4px solid var(--success);
+}
+
+.challenge-icon {
+    font-size: 2.5rem;
+    min-width: 60px;
+    text-align: center;
+}
+
+.challenge-info {
+    flex: 1;
+}
+
+.challenge-info h3 {
+    font-size: 1.1rem;
+    margin-bottom: 5px;
+    color: var(--gray-900);
+}
+
+.challenge-info p {
+    color: var(--gray-600);
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+}
+
+.challenge-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 8px;
+    background: var(--gray-200);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    min-width: 80px;
+    text-align: right;
+}
+
+.challenge-reward {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    min-width: 100px;
+}
+
+.reward-coins {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #f57f17;
+}
+
+.reward-status {
+    font-size: 0.85rem;
+    color: var(--gray-500);
+}
+
+.challenge-difficulty {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.difficulty-easy { background: #c8e6c9; color: #2e7d32; }
+.difficulty-normal { background: #fff3e0; color: #ef6c00; }
+.difficulty-hard { background: #ffcdd2; color: #c62828; }
+
+.daily-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.daily-link-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px;
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+    color: var(--gray-700);
+}
+
+.daily-link-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+    color: var(--primary);
+}
+
+.daily-link-card i {
+    font-size: 2rem;
+    color: var(--primary);
+}
+
+@media (max-width: 768px) {
+    .daily-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .challenge-card {
+        flex-wrap: wrap;
+    }
+    
+    .challenge-info {
+        width: 100%;
+    }
+    
+    .challenge-reward {
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-between;
+    }
+}
+</style>
+
+<script>
+function claimReward(challengeId, reward) {
+    fetch(`/shop/claim_reward/${challengeId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.code === 200) {
+            alert(`恭喜！获得 ${reward} 金币！`);
+            location.reload();
+        } else {
+            alert(data.msg);
+        }
+    })
+    .catch(error => {
+        alert('领取失败，请重试');
+    });
+}
+</script>
+{% endblock %}

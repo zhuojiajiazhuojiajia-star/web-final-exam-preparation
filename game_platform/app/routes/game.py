@@ -7,6 +7,12 @@ from models import db
 from datetime import datetime
 from functools import wraps
 
+# 导入商城模块的辅助函数
+from app.routes.shop import (
+    get_or_create_currency, add_coins, calculate_game_reward, 
+    update_daily_challenge_progress
+)
+
 game_bp = Blueprint('game', __name__)
 
 def check_achievement(user_id, game_id, score):
@@ -103,6 +109,17 @@ def submit_score():
 
     db.session.commit()
 
+    # 计算并发放金币奖励
+    coin_reward = calculate_game_reward(int(score), game_id)
+    add_coins(current_user.id, coin_reward, 'game_reward', 
+              f'游戏奖励 - {Game.query.get(game_id).name}', game_id)
+    
+    # 更新每日挑战进度
+    update_daily_challenge_progress(current_user.id, game_id, int(score))
+    
+    # 获取最新金币余额
+    currency = get_or_create_currency(current_user.id)
+
     # Get best score for this game
     best = GameScore.query.filter_by(user_id=current_user.id, game_id=game_id).order_by(GameScore.score.desc()).first()
 
@@ -113,7 +130,9 @@ def submit_score():
             'score': int(score),
             'best_score': best.score if best else int(score),
             'total_games': current_user.games_played,
-            'new_achievements': newly_unlocked
+            'new_achievements': newly_unlocked,
+            'coin_reward': coin_reward,
+            'total_coins': currency.coins
         }
     }
     return jsonify(response)

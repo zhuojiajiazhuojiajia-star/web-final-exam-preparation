@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{{ '添加活动' if not event else '编辑活动' }}{% endblock %}
+{% block content %}
+<div class="admin-section">
+    <div class="container">
+        <div class="admin-header">
+            <h1><i class="fas fa-calendar-alt"></i> {{ '添加活动' if not event else '编辑活动' }}</h1>
+        </div>
+
+        <div class="auth-card" style="max-width: 600px; margin: 0 auto;">
+            <form method="POST" class="auth-form">
+                <div class="form-group">
+                    <label><i class="fas fa-tag"></i> 活动名称</label>
+                    <input type="text" name="name" value="{{ event.name if event else '' }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-align-left"></i> 描述</label>
+                    <textarea name="description" rows="3">{{ event.description if event else '' }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-image"></i> 图标 (emoji)</label>
+                    <input type="text" name="icon" value="{{ event.icon if event else '🎉' }}" placeholder="如: 🎉, 🎊, 🎁">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-cog"></i> 活动类型</label>
+                    <select name="event_type" required>
+                        <option value="double_coins" {% if event and event.event_type == 'double_coins' %}selected{% endif %}>双倍金币</option>
+                        <option value="double_score" {% if event and event.event_type == 'double_score' %}selected{% endif %}>双倍分数</option>
+                        <option value="special_challenge" {% if event and event.event_type == 'special_challenge' %}selected{% endif %}>特别挑战</option>
+                        <option value="limited_item" {% if event and event.event_type == 'limited_item' %}selected{% endif %}>限时商品</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-clock"></i> 开始时间</label>
+                    <input type="datetime-local" name="start_time" 
+                           value="{{ event.start_time.strftime('%Y-%m-%d %H:%M') if event else '' }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-clock"></i> 结束时间</label>
+                    <input type="datetime-local" name="end_time" 
+                           value="{{ event.end_time.strftime('%Y-%m-%d %H:%M') if event else '' }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-coins"></i> 金币奖励加成</label>
+                    <input type="number" name="coin_bonus" value="{{ event.coin_bonus if event else 0 }}" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-percentage"></i> 分数倍率</label>
+                    <input type="number" name="score_multiplier" value="{{ event.score_multiplier if event else 1.0 }}" step="0.1" min="1">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i class="fas fa-save"></i> {{ '添加' if not event else '保存' }}
+                </button>
+            </form>
+        </div>
+
+        <a href="{{ url_for('admin.events') }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i> 返回活动列表
+        </a>
+    </div>
+</div>
+{% endblock %}

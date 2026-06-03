@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% block title %}活动中心{% endblock %}
+{% block content %}
+<div class="events-section">
+    <div class="container">
+        <div class="events-header">
+            <h1><i class="fas fa-calendar-star"></i> 活动中心</h1>
+            <p>参与限时活动，获取丰厚奖励！</p>
+        </div>
+
+        <!-- 进行中的活动 -->
+        {% if active_events %}
+        <section class="events-active">
+            <h2 class="section-subtitle"><i class="fas fa-fire"></i> 进行中的活动</h2>
+            <div class="events-grid">
+                {% for event in active_events %}
+                <div class="event-card active">
+                    <div class="event-icon">{{ event.icon or '🎉' }}</div>
+                    <div class="event-badge">进行中</div>
+                    <h3>{{ event.name }}</h3>
+                    <p>{{ event.description }}</p>
+                    <div class="event-details">
+                        {% if event.event_type == 'double_coins' %}
+                        <div class="event-bonus">
+                            <i class="fas fa-coins"></i>
+                            <span>金币 x2</span>
+                        </div>
+                        {% elif event.event_type == 'double_score' %}
+                        <div class="event-bonus">
+                            <i class="fas fa-star"></i>
+                            <span>分数 x2</span>
+                        </div>
+                        {% endif %}
+                        <div class="event-time">
+                            <i class="fas fa-clock"></i>
+                            <span>剩余: {{ event.end_time.strftime('%m-%d %H:%M') }}</span>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('main.index') }}#games" class="btn btn-primary btn-block">
+                        立即参与
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- 即将开始的活动 -->
+        {% if upcoming_events %}
+        <section class="events-upcoming">
+            <h2 class="section-subtitle"><i class="fas fa-hourglass-half"></i> 即将开始</h2>
+            <div class="events-grid">
+                {% for event in upcoming_events %}
+                <div class="event-card upcoming">
+                    <div class="event-icon">{{ event.icon or '🎊' }}</div>
+                    <div class="event-badge upcoming">即将开始</div>
+                    <h3>{{ event.name }}</h3>
+                    <p>{{ event.description }}</p>
+                    <div class="event-details">
+                        <div class="event-time">
+                            <i class="fas fa-calendar"></i>
+                            <span>{{ event.start_time.strftime('%m-%d %H:%M') }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if not active_events and not upcoming_events %}
+        <div class="empty-state">
+            <i class="fas fa-calendar-times"></i>
+            <h3>暂无活动</h3>
+            <p>敬请期待精彩活动！</p>
+        </div>
+        {% endif %}
+
+        <!-- 快捷链接 -->
+        <div class="events-links">
+            <a href="{{ url_for('shop.index') }}" class="event-link-card">
+                <i class="fas fa-store"></i>
+                <span>商城</span>
+            </a>
+            <a href="{{ url_for('shop.daily_challenges') }}" class="event-link-card">
+                <i class="fas fa-tasks"></i>
+                <span>每日任务</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.events-section {
+    padding: 40px 20px;
+    min-height: calc(100vh - 64px - 80px);
+}
+
+.events-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.events-header h1 {
+    font-size: 2.5rem;
+    color: var(--gray-900);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.events-header h1 i {
+    color: var(--warning);
+}
+
+.events-header p {
+    color: var(--gray-600);
+}
+
+.section-subtitle {
+    font-size: 1.5rem;
+    color: var(--gray-900);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-subtitle i {
+    color: var(--primary);
+}
+
+.events-active,
+.events-upcoming {
+    margin-bottom: 40px;
+}
+
+.events-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.event-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.event-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-xl);
+}
+
+.event-card.active {
+    border: 2px solid var(--success);
+}
+
+.event-card.upcoming {
+    border: 2px solid var(--warning);
+    opacity: 0.9;
+}
+
+.event-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+}
+
+.event-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.event-badge:not(.upcoming) {
+    background: var(--success);
+    color: white;
+}
+
+.event-badge.upcoming {
+    background: var(--warning);
+    color: white;
+}
+
+.event-card h3 {
+    font-size: 1.3rem;
+    margin-bottom: 10px;
+    color: var(--gray-900);
+}
+
+.event-card p {
+    color: var(--gray-600);
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+}
+
+.event-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.event-bonus,
+.event-time {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    color: var(--gray-700);
+}
+
+.event-bonus i {
+    color: var(--warning);
+}
+
+.event-time i {
+    color: var(--primary);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 40px;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: var(--gray-400);
+    margin-bottom: 20px;
+}
+
+.empty-state h3 {
+    font-size: 1.5rem;
+    color: var(--gray-700);
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    color: var(--gray-500);
+}
+
+.events-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.event-link-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px;
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+    color: var(--gray-700);
+}
+
+.event-link-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+    color: var(--primary);
+}
+
+.event-link-card i {
+    font-size: 2rem;
+    color: var(--primary);
+}
+</style>
+{% endblock %}
