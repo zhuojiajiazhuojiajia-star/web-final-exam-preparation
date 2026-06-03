@@ -1,9 +1,9 @@
 from app import create_app
 from models import db
 from models.user import User
-from models.game import Game, Achievement
+from models.game import Game
+from models.achievement import Achievement
 from models.shop import ShopItem, DailyChallenge, GameEvent
-from models.achievement import Achievement as NewAchievement
 from models.lottery import Lottery, LotteryPrize
 from models.badge import Badge
 from werkzeug.security import generate_password_hash
@@ -48,27 +48,27 @@ def init_database():
         # game_id: null = any game, 1-6 = specific game
         achievements_data = [
             # General achievements
-            {'name': '初来乍到', 'description': '完成第一次游戏', 'condition_type': 'play_count', 'condition_value': 1, 'points': 10, 'game_id': None},
-            {'name': '游戏达人', 'description': '累计完成10次游戏', 'condition_type': 'play_count', 'condition_value': 10, 'points': 20, 'game_id': None},
-            {'name': '游戏大师', 'description': '累计完成50次游戏', 'condition_type': 'play_count', 'condition_value': 50, 'points': 50, 'game_id': None},
+            {'name': '初来乍到', 'description': '完成第一次游戏', 'category': 'play_count', 'target_value': 1, 'coin_reward': 10, 'game_id': None, 'icon': '🎮'},
+            {'name': '游戏达人', 'description': '累计完成10次游戏', 'category': 'play_count', 'target_value': 10, 'coin_reward': 20, 'game_id': None, 'icon': '🏅'},
+            {'name': '游戏大师', 'description': '累计完成50次游戏', 'category': 'play_count', 'target_value': 50, 'coin_reward': 50, 'game_id': None, 'icon': '🏆'},
             # Snake achievements
-            {'name': '贪吃蛇新手', 'description': '贪吃蛇得分超过50', 'condition_type': 'high_score', 'condition_value': 50, 'points': 15, 'game_id': 1},
-            {'name': '贪吃蛇高手', 'description': '贪吃蛇得分超过200', 'condition_type': 'high_score', 'condition_value': 200, 'points': 30, 'game_id': 1},
+            {'name': '贪吃蛇新手', 'description': '贪吃蛇得分超过50', 'category': 'total_score', 'target_value': 50, 'coin_reward': 15, 'game_id': 1, 'icon': '🐍'},
+            {'name': '贪吃蛇高手', 'description': '贪吃蛇得分超过200', 'category': 'total_score', 'target_value': 200, 'coin_reward': 30, 'game_id': 1, 'icon': '🔥'},
             # 2048 achievements
-            {'name': '2048达人', 'description': '2048得分超过1000', 'condition_type': 'high_score', 'condition_value': 1000, 'points': 25, 'game_id': 2},
-            {'name': '2048大师', 'description': '2048得分超过5000', 'condition_type': 'high_score', 'condition_value': 5000, 'points': 50, 'game_id': 2},
+            {'name': '2048达人', 'description': '2048得分超过1000', 'category': 'total_score', 'target_value': 1000, 'coin_reward': 25, 'game_id': 2, 'icon': '🔢'},
+            {'name': '2048大师', 'description': '2048得分超过5000', 'category': 'total_score', 'target_value': 5000, 'coin_reward': 50, 'game_id': 2, 'icon': '💎'},
             # Minesweeper achievements
-            {'name': '扫雷专家', 'description': '扫雷初级通关（得分超过71）', 'condition_type': 'high_score', 'condition_value': 71, 'points': 20, 'game_id': 3},
-            {'name': '扫雷大师', 'description': '扫雷中级通关（得分超过216）', 'condition_type': 'high_score', 'condition_value': 216, 'points': 40, 'game_id': 3},
+            {'name': '扫雷专家', 'description': '扫雷初级通关（得分超过71）', 'category': 'total_score', 'target_value': 71, 'coin_reward': 20, 'game_id': 3, 'icon': '💣'},
+            {'name': '扫雷大师', 'description': '扫雷中级通关（得分超过216）', 'category': 'total_score', 'target_value': 216, 'coin_reward': 40, 'game_id': 3, 'icon': '🏆'},
             # Tetris achievements
-            {'name': '俄罗斯方块新手', 'description': '俄罗斯方块消除10行', 'condition_type': 'high_score', 'condition_value': 10, 'points': 15, 'game_id': 4},
-            {'name': '俄罗斯方块高手', 'description': '俄罗斯方块消除50行', 'condition_type': 'high_score', 'condition_value': 50, 'points': 35, 'game_id': 4},
+            {'name': '俄罗斯方块新手', 'description': '俄罗斯方块消除10行', 'category': 'total_score', 'target_value': 10, 'coin_reward': 15, 'game_id': 4, 'icon': '🧱'},
+            {'name': '俄罗斯方块高手', 'description': '俄罗斯方块消除50行', 'category': 'total_score', 'target_value': 50, 'coin_reward': 35, 'game_id': 4, 'icon': '✨'},
             # Memory achievements
-            {'name': '记忆达人', 'description': '记忆翻牌完美通关（步数等于配对数）', 'condition_type': 'high_score', 'condition_value': 100, 'points': 25, 'game_id': 5},
+            {'name': '记忆达人', 'description': '记忆翻牌完美通关（步数等于配对数）', 'category': 'total_score', 'target_value': 100, 'coin_reward': 25, 'game_id': 5, 'icon': '🃏'},
             # Breakout achievements
-            {'name': '打砖块高手', 'description': '打砖块得分超过500', 'condition_type': 'high_score', 'condition_value': 500, 'points': 25, 'game_id': 6},
+            {'name': '打砖块高手', 'description': '打砖块得分超过500', 'category': 'total_score', 'target_value': 500, 'coin_reward': 25, 'game_id': 6, 'icon': '🏓'},
             # General collection achievement
-            {'name': '全能玩家', 'description': '在所有游戏中都有得分记录', 'condition_type': 'games_played', 'condition_value': 6, 'points': 100, 'game_id': None},
+            {'name': '全能玩家', 'description': '在所有游戏中都有得分记录', 'category': 'games_played', 'target_value': 6, 'coin_reward': 100, 'game_id': None, 'icon': '🌟'},
         ]
 
         for ad in achievements_data:
