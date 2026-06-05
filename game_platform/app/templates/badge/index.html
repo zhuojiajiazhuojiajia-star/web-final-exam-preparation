@@ -271,23 +271,52 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(res => res.json())
         .then(data => {
             const container = document.getElementById('all-badges');
-            if (data.code === 200 && data.data.length > 0) {
-                container.innerHTML = data.data.map(badge => `
-                    <div class="badge-card ${badge.user_has ? 'has-badge' : ''}">
-                        <span class="badge-icon">${badge.icon}</span>
-                        <div class="badge-name">${badge.name}</div>
-                        <div class="badge-desc">${badge.description}</div>
-                        <div class="badge-meta">
-                            ${badge.game_name}
-                            ${badge.valid_days > 0 ? `<br>有效期: ${badge.valid_days}天` : '<br>永久有效'}
+            if (data.code === 200) {
+                if (data.data.length > 0) {
+                    container.innerHTML = data.data.map(badge => `
+                        <div class="badge-card ${badge.user_has ? 'has-badge' : ''}">
+                            <span class="badge-icon">${badge.icon}</span>
+                            <div class="badge-name">${badge.name}</div>
+                            <div class="badge-desc">${badge.description}</div>
+                            <div class="badge-meta">
+                                ${badge.game_name}
+                                ${badge.valid_days > 0 ? `<br>有效期: ${badge.valid_days}天` : '<br>永久有效'}
+                            </div>
+                            ${badge.user_has ? 
+                                '<span style="color:#28a745;margin-top:10px;"><i class="fas fa-check-circle"></i> 已拥有</span>' : 
+                                '<span style="color:#999;margin-top:10px;"><i class="fas fa-lock"></i> 通过排行榜获得</span>'}
+                            <span class="badge-type ${badge.badge_type}">${getBadgeTypeName(badge.badge_type)}</span>
                         </div>
-                        ${badge.user_has ? 
-                            '<span style="color:#28a745;margin-top:10px;"><i class="fas fa-check-circle"></i> 已拥有</span>' : 
-                            '<span style="color:#999;margin-top:10px;"><i class="fas fa-lock"></i> 通过排行榜获得</span>'}
-                        <span class="badge-type ${badge.badge_type}">${getBadgeTypeName(badge.badge_type)}</span>
+                    `).join('');
+                } else {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-store"></i>
+                            <p>徽章商城暂无徽章</p>
+                            <p>敬请期待新徽章上架！</p>
+                        </div>
+                    `;
+                }
+            } else {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>加载失败</p>
+                        <p>${data.msg || '请检查网络连接'}</p>
                     </div>
-                `).join('');
+                `;
             }
+        })
+        .catch(error => {
+            const container = document.getElementById('all-badges');
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p>加载失败</p>
+                    <p>网络错误或未登录</p>
+                </div>
+            `;
+            console.error('Failed to load badges:', error);
         });
 });
 
