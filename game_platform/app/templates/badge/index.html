@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Load user badges
-    fetch('/badge/api/list')
+    fetch('/badge/api/list', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
             const container = document.getElementById('user-badges');
@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
     // Load all badges (shop)
-    fetch('/badge/api/all')
+    fetch('/badge/api/all', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
             const container = document.getElementById('all-badges');
