@@ -8,12 +8,34 @@ from models.lottery import Lottery, LotteryPrize
 from models.badge import Badge
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
+import pymysql
 
 def init_database():
     app = create_app()
-
+    
     with app.app_context():
-        db.create_all()
+        try:
+            db.create_all()
+        except Exception as e:
+            if "Unknown database" in str(e):
+                print("数据库不存在，正在创建...")
+                db_uri = app.config['SQLALCHEMY_DATABASE_URI']
+                parts = db_uri.replace('mysql+pymysql://', '').split('/')
+                credentials = parts[0].split('@')[0]
+                host = parts[0].split('@')[1]
+                db_name = parts[1].split('?')[0]
+                
+                user, password = credentials.split(':')
+                
+                conn = pymysql.connect(host=host, user=user, password=password)
+                cursor = conn.cursor()
+                cursor.execute(f"CREATE DATABASE IF NOT EXISTS {db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+                cursor.close()
+                conn.close()
+                
+                db.create_all()
+            else:
+                raise
 
         # Create admin user if not exists
         admin = User.query.filter_by(username='admin').first()
