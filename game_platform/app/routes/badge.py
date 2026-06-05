@@ -279,23 +279,31 @@ def award_monthly_champions():
 @login_required
 def api_all_badges():
     """获取所有徽章（用于徽章商城）"""
-    badges = Badge.query.all()
-    badges_data = []
-    
-    for badge in badges:
-        # 检查用户是否已有该徽章
-        user_has = UserBadge.query.filter_by(user_id=current_user.id, badge_id=badge.id).first() is not None
+    try:
+        badges = Badge.query.all()
+        badges_data = []
         
-        badges_data.append({
-            'id': badge.id,
-            'name': badge.name,
-            'description': badge.description,
-            'icon': badge.icon,
-            'badge_type': badge.badge_type,
-            'game_id': badge.game_id,
-            'game_name': badge.game.name if badge.game else '全局',
-            'valid_days': badge.valid_days,
-            'user_has': user_has
-        })
-    
-    return jsonify({'code': 200, 'data': badges_data})
+        for badge in badges:
+            user_has = UserBadge.query.filter_by(user_id=current_user.id, badge_id=badge.id).first() is not None
+            
+            game_name = '全局'
+            if badge.game_id:
+                game = Game.query.get(badge.game_id)
+                game_name = game.name if game else '未知游戏'
+            
+            badges_data.append({
+                'id': badge.id,
+                'name': badge.name,
+                'description': badge.description,
+                'icon': badge.icon,
+                'badge_type': badge.badge_type,
+                'game_id': badge.game_id,
+                'game_name': game_name,
+                'valid_days': badge.valid_days,
+                'user_has': user_has
+            })
+        
+        return jsonify({'code': 200, 'data': badges_data})
+    except Exception as e:
+        print(f"Error in api_all_badges: {str(e)}")
+        return jsonify({'code': 500, 'msg': str(e)}), 500
