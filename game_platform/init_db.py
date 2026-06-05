@@ -238,7 +238,7 @@ def init_database():
                 )
                 db.session.add(prize)
 
-        # Create badges (champion badges)
+        # Create badges (champion badges + achievement badges)
         # game_id: None = global, 1-6 = specific game
         badges_data = [
             # Global champion badges
@@ -257,6 +257,12 @@ def init_database():
             {'name': '记忆翻牌月冠军', 'description': '记忆翻牌上月排行榜冠军', 'icon': '🎴', 'badge_type': 'monthly_champion', 'game_id': 5, 'valid_days': 30},
             {'name': '打砖块周冠军', 'description': '打砖块上周排行榜冠军', 'icon': '🏓', 'badge_type': 'weekly_champion', 'game_id': 6, 'valid_days': 7},
             {'name': '打砖块月冠军', 'description': '打砖块上月排行榜冠军', 'icon': '🎱', 'badge_type': 'monthly_champion', 'game_id': 6, 'valid_days': 30},
+            # Achievement badges (earned through achievements)
+            {'name': '初出茅庐', 'description': '完成第一次游戏', 'icon': '🌱', 'badge_type': 'special', 'game_id': None, 'valid_days': 0},
+            {'name': '游戏达人', 'description': '游戏次数达到100', 'icon': '🎮', 'badge_type': 'special', 'game_id': None, 'valid_days': 0},
+            {'name': '连胜将军', 'description': '连续登录7天', 'icon': '🔥', 'badge_type': 'special', 'game_id': None, 'valid_days': 0},
+            {'name': '2048大师', 'description': '2048达到10000分', 'icon': '💎', 'badge_type': 'special', 'game_id': 2, 'valid_days': 0},
+            {'name': '俄罗斯之王', 'description': '俄罗斯方块达到50000分', 'icon': '👑', 'badge_type': 'special', 'game_id': 4, 'valid_days': 0},
         ]
 
         for bd in badges_data:
@@ -264,6 +270,23 @@ def init_database():
             if not badge:
                 badge = Badge(**bd)
                 db.session.add(badge)
+
+        db.session.commit()
+
+        # Link achievements to badges
+        achievement_badge_map = {
+            '初次游戏': '初出茅庐',
+            '游戏达人': '游戏达人',
+            '连登7天': '连胜将军',
+            '2048大师': '2048大师',
+            '俄罗斯之王': '俄罗斯之王',
+        }
+
+        for ach_name, badge_name in achievement_badge_map.items():
+            ach = Achievement.query.filter_by(name=ach_name).first()
+            badge = Badge.query.filter_by(name=badge_name).first()
+            if ach and badge:
+                ach.badge_reward = badge.id
 
         db.session.commit()
         print('数据库初始化完成！')

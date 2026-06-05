@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, redirect, url_fo
 from flask_login import login_required, current_user
 from models.game import Game, GameScore, GameFavorite
 from models.user import User
-from models.game import Achievement, UserAchievement
+from models.achievement import Achievement, UserAchievement
 from models import db
 from datetime import datetime
 from functools import wraps
@@ -23,35 +23,44 @@ def check_achievement(user_id, game_id, score):
 
     newly_unlocked = []
 
-    # Check play count achievements (game_id is None = any game)
+    # Check play_count achievements
     play_count = user.games_played
-    achievements = Achievement.query.filter_by(condition_type='play_count', game_id=None).all()
+    achievements = Achievement.query.filter_by(category='play_count', game_id=None).all()
     for ach in achievements:
-        if play_count >= ach.condition_value:
+        if play_count >= ach.target_value:
             existing = UserAchievement.query.filter_by(user_id=user_id, achievement_id=ach.id).first()
             if not existing:
                 ua = UserAchievement(user_id=user_id, achievement_id=ach.id)
                 db.session.add(ua)
                 newly_unlocked.append(ach.name)
 
-    # Check high score achievements for current game
-    # Get achievements that match current game OR are for any game (game_id=None)
-    achievements = Achievement.query.filter_by(condition_type='high_score').filter(
+    # Check reach_score achievements for current game
+    achievements = Achievement.query.filter_by(category='reach_score').filter(
         (Achievement.game_id == game_id) | (Achievement.game_id == None)
     ).all()
     for ach in achievements:
-        if score >= ach.condition_value:
+        if score >= ach.target_value:
             existing = UserAchievement.query.filter_by(user_id=user_id, achievement_id=ach.id).first()
             if not existing:
                 ua = UserAchievement(user_id=user_id, achievement_id=ach.id)
                 db.session.add(ua)
                 newly_unlocked.append(ach.name)
 
-    # Check games played achievements (game_id is None = any game)
-    games_with_scores = GameScore.query.filter_by(user_id=user_id).distinct(GameScore.game_id).count()
-    achievements = Achievement.query.filter_by(condition_type='games_played', game_id=None).all()
+    # Check total_score achievements
+    achievements = Achievement.query.filter_by(category='total_score', game_id=None).all()
     for ach in achievements:
-        if games_with_scores >= ach.condition_value:
+        if user.total_score >= ach.target_value:
+            existing = UserAchievement.query.filter_by(user_id=user_id, achievement_id=ach.id).first()
+            if not existing:
+                ua = UserAchievement(user_id=user_id, achievement_id=ach.id)
+                db.session.add(ua)
+                newly_unlocked.append(ach.name)
+
+    # Check games_played achievements (unique games played)
+    games_with_scores = GameScore.query.filter_by(user_id=user_id).distinct(GameScore.game_id).count()
+    achievements = Achievement.query.filter_by(category='games_played', game_id=None).all()
+    for ach in achievements:
+        if games_with_scores >= ach.target_value:
             existing = UserAchievement.query.filter_by(user_id=user_id, achievement_id=ach.id).first()
             if not existing:
                 ua = UserAchievement(user_id=user_id, achievement_id=ach.id)

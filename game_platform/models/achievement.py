@@ -11,6 +11,7 @@ class Achievement(db.Model):
     category = db.Column(db.String(30))  # play_count, total_score, login_streak, win_games, reach_score
     target_value = db.Column(db.Integer, nullable=False)
     coin_reward = db.Column(db.Integer, default=0)
+    badge_reward = db.Column(db.Integer, default=None)  # 完成后奖励的徽章ID
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
     

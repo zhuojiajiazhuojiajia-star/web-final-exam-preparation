@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from models.user import User
-from models.game import Game, GameScore, Achievement
+from models.game import Game, GameScore
+from models.achievement import Achievement
 from models.shop import ShopItem, DailyChallenge, GameEvent, UserCurrency
 from models import db
 from functools import wraps

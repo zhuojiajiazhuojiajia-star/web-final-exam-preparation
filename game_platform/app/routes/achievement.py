@@ -205,6 +205,21 @@ def api_claim():
     )
     db.session.add(transaction)
     
+    # 奖励徽章
+    from models.badge import Badge, UserBadge
+    if achievement.badge_reward:
+        badge = Badge.query.get(achievement.badge_reward)
+        if badge:
+            existing_badge = UserBadge.query.filter_by(user_id=current_user.id, badge_id=badge.id).first()
+            if not existing_badge:
+                user_badge = UserBadge(
+                    user_id=current_user.id,
+                    badge_id=badge.id,
+                    earned_at=datetime.now(),
+                    expires_at=None  # 永久有效
+                )
+                db.session.add(user_badge)
+    
     db.session.commit()
     
     return jsonify({

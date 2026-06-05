@@ -26,28 +26,6 @@ class GameScore(db.Model):
     difficulty = db.Column(db.String(20), default='normal')
     created_at = db.Column(db.DateTime, default=datetime.now)
 
-class Achievement(db.Model):
-    __tablename__ = 'achievements'
-    
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String(50), nullable=False)
-    description = db.Column(db.String(200))
-    icon = db.Column(db.String(100))
-    condition_type = db.Column(db.String(50))  # 'play_count', 'high_score', 'games_played'
-    condition_value = db.Column(db.Integer)
-    points = db.Column(db.Integer, default=10)
-    game_id = db.Column(db.Integer, db.ForeignKey('games.id'), nullable=True)  # null = any game
-
-class UserAchievement(db.Model):
-    __tablename__ = 'user_achievements'
-    
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    achievement_id = db.Column(db.Integer, db.ForeignKey('achievements.id'), nullable=False)
-    unlocked_at = db.Column(db.DateTime, default=datetime.now)
-    
-    __table_args__ = (db.UniqueConstraint('user_id', 'achievement_id'),)
-
 class GameFavorite(db.Model):
     __tablename__ = 'game_favorites'
     

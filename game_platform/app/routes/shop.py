@@ -260,13 +260,26 @@ def update_daily_challenge_progress(user_id, game_id, score):
     challenges = DailyChallenge.query.filter_by(is_active=True).all()
     
     for challenge in challenges:
+        # 查找或创建用户挑战记录
         uc = UserDailyChallenge.query.filter_by(
             user_id=user_id,
             challenge_id=challenge.id,
             date=today
         ).first()
         
-        if not uc or uc.is_completed:
+        # 如果记录不存在，创建一个新记录
+        if not uc:
+            uc = UserDailyChallenge(
+                user_id=user_id,
+                challenge_id=challenge.id,
+                date=today,
+                current_progress=0,
+                is_completed=False
+            )
+            db.session.add(uc)
+            db.session.flush()  # 获取ID
+        
+        if uc.is_completed:
             continue
         
         progress_made = False
