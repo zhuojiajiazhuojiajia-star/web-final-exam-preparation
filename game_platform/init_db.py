@@ -22,12 +22,19 @@ def init_database():
                 db_uri = app.config['SQLALCHEMY_DATABASE_URI']
                 parts = db_uri.replace('mysql+pymysql://', '').split('/')
                 credentials = parts[0].split('@')[0]
-                host = parts[0].split('@')[1]
+                host_port = parts[0].split('@')[1]
                 db_name = parts[1].split('?')[0]
                 
                 user, password = credentials.split(':')
                 
-                conn = pymysql.connect(host=host, user=user, password=password)
+                if ':' in host_port:
+                    host, port = host_port.split(':')
+                    port = int(port)
+                else:
+                    host = host_port
+                    port = 3306
+                
+                conn = pymysql.connect(host=host, port=port, user=user, password=password)
                 cursor = conn.cursor()
                 cursor.execute(f"CREATE DATABASE IF NOT EXISTS {db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
                 cursor.close()
